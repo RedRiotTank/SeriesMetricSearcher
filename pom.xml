@@ -39,6 +39,14 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <mainClass>ui.IndexSearchInterface</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
 
     </build>
@@ -80,6 +88,13 @@
             <groupId>org.htt</groupId>
             <artifactId>SeriesMetricSearcher</artifactId>
             <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.intellij/forms_rt -->
+        <dependency>
+            <groupId>com.intellij</groupId>
+            <artifactId>forms_rt</artifactId>
+            <version>7.0.3</version>
         </dependency>
 
     </dependencies>
