@@ -16,7 +16,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 
 public class IndexSearch {
-
     private IndexReader reader;
     private IndexSearcher searcher;
 
@@ -38,9 +37,6 @@ public class IndexSearch {
         return generateMetricDocList(topDocs);
     }
 
-
-
-
     private ArrayList<MetricDoc> generateMetricDocList( TopDocs topDocs) throws IOException {
         ArrayList<MetricDoc> metricDocList = new ArrayList<>();
 
@@ -50,8 +46,6 @@ public class IndexSearch {
 
         return metricDocList;
     }
-
-
 
     public void setMaxResults(int maxResults){
         this.maxResults = maxResults;
