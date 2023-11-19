@@ -27,8 +27,8 @@ public class MetricDoc {
         this.episode_number = doc.get("episode_number");
         this.spoken_words = doc.get("spoken_words");
         this.imdb_rating = doc.get("imdb_rating");
-        this.imdb_votes = doc.get("imdb_rating");;
-        this.release_date = doc.get("release_date");;
+        this.imdb_votes = doc.get("imdb_votes");
+        this.release_date = doc.get("release_date");
         this.season = doc.get("season");
         this.title = doc.get("title");
         this.views = doc.get("episode_views");

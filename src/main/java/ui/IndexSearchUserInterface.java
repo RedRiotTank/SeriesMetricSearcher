@@ -7,8 +7,8 @@ import org.apache.lucene.queryparser.classic.ParseException;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,12 +40,9 @@ public class IndexSearchUserInterface {
         initialLabel.setHorizontalAlignment(JLabel.CENTER);
 
         JButton openIndexButton = new JButton("Explore");
-        openIndexButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                initialFrame.dispose();
-                showFileChooser();
-            }
+        openIndexButton.addActionListener(e -> {
+            initialFrame.dispose();
+            showFileChooser();
         });
 
         initialPanel.add(initialLabel, BorderLayout.NORTH);
@@ -53,6 +50,7 @@ public class IndexSearchUserInterface {
 
         initialFrame.getContentPane().add(initialPanel);
         initialFrame.pack();
+        initialFrame.setSize(200,75);
         initialFrame.setLocationRelativeTo(null);
         initialFrame.setVisible(true);
     }
@@ -79,7 +77,7 @@ public class IndexSearchUserInterface {
             e.printStackTrace();
         }
         frame = new JFrame("Index Search");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
         JPanel mainPanel = new JPanel(new GridLayout(0, 2));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -91,17 +89,13 @@ public class IndexSearchUserInterface {
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
         titleAndSearchPanel.add(titleLabel, BorderLayout.NORTH);
 
-        globalSearchButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.out.println("Funciona");
-                createGlobalSearchWindow(IndexSearchUserInterface.this);
-            }
+        globalSearchButton.addActionListener(e -> {
+            createGlobalSearchWindow(IndexSearchUserInterface.this);
         });
         mainPanel.add(titleAndSearchPanel);
         mainPanel.add(globalSearchButton);
 
-        String[] campos = {"Temática del episodio", "Nº del episodio", "Diálogo", "Character", "Localización del diálogo", "Título del episodio", "Fecha de lanzamiento del episodio", "Puntuación en IMDB", "Votos en IMDB", "Nº de temporada"};
+        String[] campos = {"Temática del episodio", "Nº del episodio", "Diálogo", "Personaje", "Localización del diálogo", "Título del episodio", "Fecha de lanzamiento del episodio", "Puntuación en IMDB", "Votos en IMDB", "Nº de temporada"};
 
         textFields = new HashMap<>();
         queryPerFields = new HashMap<>();
@@ -125,7 +119,7 @@ public class IndexSearchUserInterface {
                 }
             }
             try {
-                search();
+                search(false);
             } catch (IOException | ParseException ex) {
                 throw new RuntimeException(ex);
             }
@@ -134,6 +128,15 @@ public class IndexSearchUserInterface {
 
         mainPanel.add(new JLabel());
         mainPanel.add(searchButton);
+
+        // para cerrar el índice cuando se cierre la ventana principal (fields search)
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                closeIndex();
+                System.exit(0);
+            }
+        });
 
         System.out.println(indexPath);
         frame.getContentPane().add(mainPanel);
@@ -165,19 +168,16 @@ public class IndexSearchUserInterface {
             String globalQuery = searchTextField.getText();
             System.out.println("Global Search Term: " + globalQuery);
             try {
-                search();
+                search(true);
             } catch (IOException | ParseException ex) {
                 throw new RuntimeException(ex);
             }
         });
 
         JButton backButton = new JButton("Back to Fields Search");
-        backButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                globalSearchFrame.dispose(); // cierra la ventana
-                mainWindow.showMainWindow(); // muestra la ventana principal
-            }
+        backButton.addActionListener(e -> {
+            globalSearchFrame.dispose(); // cierra la ventana
+            mainWindow.showMainWindow(); // muestra la ventana principal
         });
 
         globalSearchPanel.add(titleLabel);
@@ -191,51 +191,129 @@ public class IndexSearchUserInterface {
         globalSearchFrame.setVisible(true);
     }
 
-    private void search() throws IOException, ParseException {
-        indexSearch = new IndexSearch(indexPath);
-        results = indexSearch.search("mariom", SearchOption.CHARACTER);
-        indexSearch.closeIndex();
-        createResultsWindow();
+    private void search(boolean global) throws IOException, ParseException {
+        if(global){
+            // TODO: hacer la busqueda global
+            System.out.println("Búsqueda global");
+        }else{
+            // TODO: hacerlo con x campos no solo con uno
+            System.out.println("Búsqueda por campos");
+            String query = textFields.get("Personaje").getText();
+            results = indexSearch.search(query, SearchOption.CHARACTER);
+            createResultsWindow();
+        }
+
     }
 
-    private void createResultsWindow(){
+    private void createResultsWindow() {
         JFrame resultsFrame = new JFrame("Query Results");
         resultsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        JPanel resultsPanel = new JPanel(new GridLayout());
-        resultsPanel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+        JPanel resultsPanel = new JPanel(new BorderLayout());
+        resultsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JLabel titleLabel = new JLabel("Query Results");
         titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
+        resultsPanel.add(titleLabel, BorderLayout.NORTH);
 
-        resultsPanel.add(titleLabel);
+        JPanel resultsGridPanel = getResultsGridPanel();
 
-        for(MetricDoc doc: results){
-            // TODO: mejorar la presentacion: no se ve bien.
-            String resultText = "Título: " + doc.getTitle() +
-                    "\nNúmero de Episodio: " + doc.getEpisode_number() +
-                    "\nPersonaje: " + doc.getCharacter() +
-                    "\nDiálogo: " + doc.getSpoken_words() +
-                    "\nRating IMDB: " + doc.getImdb_rating();
+        // se aniade este componente para los casos en los que sea mas grande el contenido que la ventana
+        JScrollPane scrollPane = new JScrollPane(resultsGridPanel);
+        resultsPanel.add(scrollPane, BorderLayout.CENTER);
 
-            JTextArea resultTextArea = new JTextArea(resultText);
-            resultTextArea.setLineWrap(true);
-            resultTextArea.setWrapStyleWord(true);
-            resultTextArea.setEditable(false);
+        JButton newSearchButton = new JButton("New query");
+        newSearchButton.addActionListener(e -> {
+            resultsFrame.dispose(); // se cierra
+            showMainWindow(); // se abre la principal
+        });
 
-            resultsPanel.add(resultTextArea);
-        }
+        resultsPanel.add(newSearchButton, BorderLayout.SOUTH);
 
         resultsFrame.getContentPane().add(resultsPanel);
         resultsFrame.pack();
+        resultsFrame.setSize(1100, 550); // tam ventana resultados
         resultsFrame.setLocationRelativeTo(frame);
         resultsFrame.setVisible(true);
     }
 
+    private JPanel getResultsGridPanel() { // se encarga de la ventana donde se muestran los resultados
+        JPanel resultsGridPanel = new JPanel(new GridLayout(0, 2)); // columnas y filas
+        resultsGridPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        for (int i = 0; i < results.size(); i++) { // para cada documento
+            MetricDoc doc = results.get(i);
+
+            String resultText = "Documento nº " + (i + 1) + "\n" +
+                    "Título: " + doc.getTitle() +
+                    "\nNúmero de Episodio: " + doc.getEpisode_number() +
+                    "\nPersonaje: " + doc.getCharacter();
+
+            JTextArea resultTextArea = new JTextArea(resultText);
+            resultTextArea.setBorder(BorderFactory.createEtchedBorder() );
+            resultTextArea.setEditable(false);
+            resultTextArea.setLineWrap(true);
+            resultTextArea.setWrapStyleWord(true);
+
+            JButton detailsButton = new JButton("More details");
+            detailsButton.addActionListener(e -> showDetailsWindow(doc));
+
+            JPanel resultDetailsPanel = new JPanel(new BorderLayout());
+            resultDetailsPanel.add(resultTextArea, BorderLayout.CENTER);
+            resultDetailsPanel.add(detailsButton, BorderLayout.SOUTH);
+
+            resultsGridPanel.add(resultDetailsPanel);
+        }
+        return resultsGridPanel;
+    }
+
+    private void showDetailsWindow(MetricDoc doc) {
+        JFrame detailsFrame = new JFrame("Chapter details");
+        detailsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        JPanel detailsPanel = new JPanel(new BorderLayout());
+        detailsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JTextArea detailsTextArea = new JTextArea();
+        detailsTextArea.setEditable(false);
+
+        String detailsText = "Title: " + doc.getTitle() +
+                "\nNº de Episodio: " + doc.getEpisode_number() +
+                "\nCharacter: " + doc.getCharacter() +
+                "\nDialog: " + doc.getSpoken_words() +
+                "\nLocation: " + doc.getLocation() +
+                "\nRating IMDB: " + doc.getImdb_rating() +
+                //"\nVotes in IMDB: " + doc.getImdb_votes() +
+                "\nRelease date: " + doc.getRelease_date() +
+                "\nSeason: " + doc.getSeason();
+        detailsTextArea.setText(detailsText);
+
+        detailsPanel.add(new JScrollPane(detailsTextArea), BorderLayout.CENTER);
+
+        detailsFrame.getContentPane().add(detailsPanel);
+        detailsFrame.pack();
+        detailsFrame.setSize(600, 400);
+        detailsFrame.setLocationRelativeTo(null);
+        detailsFrame.setVisible(true);
+    }
+
+
     private void initializeIndexSearch() throws IOException {
         indexSearch = new IndexSearch(indexPath);
     }
+
+    private void closeIndex() {
+        try {
+            if (indexSearch != null) {
+                indexSearch.closeIndex();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(IndexSearchUserInterface::new);
     }
