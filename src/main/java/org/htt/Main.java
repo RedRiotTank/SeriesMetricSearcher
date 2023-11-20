@@ -11,8 +11,8 @@ import java.util.ArrayList;
 public class Main {
     public static void main(String[] args) throws IOException, ParseException {
 
-        IndexSearch indexSearch = new IndexSearch("E:\\dev\\SeriesMetricSearcher\\files\\index");
-        ArrayList<MetricDoc> list =  indexSearch.search("mariom", SearchOption.CHARACTER);
+       IndexSearch indexSearch = new IndexSearch("E:\\dev\\SeriesMetricSearcher\\files\\index");
+       ArrayList<MetricDoc> list =  indexSearch.search("7.0", SearchOption.IMDB_RATING);
         indexSearch.closeIndex();
 
     }
