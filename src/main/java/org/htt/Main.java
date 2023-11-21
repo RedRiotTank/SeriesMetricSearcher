@@ -62,6 +62,10 @@ public class Main {
         ArrayList<MetricDoc> multiq = indexSearch.search(BooleanClause.Occur.MUST);
 
 
+        //ejemplo global query
+        ArrayList<MetricDoc> all = indexSearch.allFieldsSearch("halloween 777");
+
+
         indexSearch.closeIndex();
 
     }

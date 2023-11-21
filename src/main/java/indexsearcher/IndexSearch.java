@@ -1,5 +1,7 @@
 package indexsearcher;
 
+import customanalyzers.EnHunspellAnalyzer;
+import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.DirectoryReader;
@@ -123,6 +125,23 @@ public class IndexSearch {
         this.querieList.clear();
 
         return generateMetricDocList(topDocs);
+    }
+
+    public ArrayList<MetricDoc> allFieldsSearch(String queryString) throws IOException, ParseException, java.text.ParseException {
+        BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+
+
+        for (SearchOption so : SearchOption.values()) {
+            QueryParser parser = new QueryParser(so.getField(), so.getAnalyzer());
+            Query tquery = parser.parse(queryString);
+            queryBuilder.add(tquery, BooleanClause.Occur.SHOULD);
+        }
+        Query allq = queryBuilder.build();
+
+        TopDocs topDocs = searcher.search(allq, maxResults);
+
+        return generateMetricDocList(topDocs);
+
     }
 
     private String setZeros(String date){
