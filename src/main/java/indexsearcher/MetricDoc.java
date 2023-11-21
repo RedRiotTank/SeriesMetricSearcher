@@ -3,6 +3,7 @@ package indexsearcher;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.ScoreDoc;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -26,9 +27,16 @@ public class MetricDoc {
     public MetricDoc(Document doc){
         this.episode_number = doc.get("episode_number");
         this.spoken_words = doc.get("spoken_words");
-        this.imdb_rating = doc.get("imdb_rating");
+
+        String imdbRatingString = doc.get("imdb_rating").split("\\.")[0];
+        int imdbRatingInteger = Integer.parseInt(imdbRatingString);
+        double normalizedImdbRating = imdbRatingInteger / 10.0;
+        String imdbRatingStringNormalized = String.valueOf(normalizedImdbRating);
+        this.imdb_rating = imdbRatingStringNormalized;
+
         this.imdb_votes = doc.get("imdb_votes");
-        this.release_date = doc.get("release_date");
+        //this.release_date =doc.get("release_date");
+        this.release_date = new SimpleDateFormat("dd-MM-yy").format((new Date(Long.parseLong(doc.get("release_date")))));
         this.season = doc.get("season");
         this.title = doc.get("title");
         this.views = doc.get("episode_views");

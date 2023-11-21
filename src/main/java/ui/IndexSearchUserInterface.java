@@ -120,7 +120,7 @@ public class IndexSearchUserInterface {
             }
             try {
                 search(false);
-            } catch (IOException | ParseException ex) {
+            } catch (IOException | ParseException | java.text.ParseException ex) {
                 throw new RuntimeException(ex);
             }
 
@@ -169,7 +169,7 @@ public class IndexSearchUserInterface {
             System.out.println("Global Search Term: " + globalQuery);
             try {
                 search(true);
-            } catch (IOException | ParseException ex) {
+            } catch (IOException | ParseException | java.text.ParseException ex) {
                 throw new RuntimeException(ex);
             }
         });
@@ -191,15 +191,15 @@ public class IndexSearchUserInterface {
         globalSearchFrame.setVisible(true);
     }
 
-    private void search(boolean global) throws IOException, ParseException {
+    private void search(boolean global) throws IOException, ParseException, java.text.ParseException {
         if(global){
             // TODO: hacer la busqueda global
             System.out.println("Búsqueda global");
         }else{
             // TODO: hacerlo con x campos no solo con uno
             System.out.println("Búsqueda por campos");
-            String query = textFields.get("Personaje").getText();
-            results = indexSearch.search(query, SearchOption.CHARACTER);
+            String[] query = {textFields.get("Personaje").getText()};
+           // results = indexSearch.search(query, SearchOption.CHARACTER, true, true);
             createResultsWindow();
         }
 
