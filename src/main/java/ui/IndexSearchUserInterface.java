@@ -81,7 +81,7 @@ public class IndexSearchUserInterface {
 
         initialFrame.getContentPane().add(initialPanel);
         initialFrame.pack();
-        initialFrame.setSize(200,75);
+        initialFrame.setSize(400,150);
         initialFrame.setLocationRelativeTo(null);
         initialFrame.setVisible(true);
     }
