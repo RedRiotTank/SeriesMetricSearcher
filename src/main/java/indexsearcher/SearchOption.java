@@ -11,7 +11,7 @@ import java.text.ParseException;
 public enum SearchOption {
     EPISODE_NUMBER("episode_number"),
     SPOKEN_WORDS("spoken_words"),
-    SPOKEN_WORDS_DIALOG("spoken_wordsDialog"),
+   // SPOKEN_WORDS_DIALOG("spoken_wordsDialog"),
     CHARACTER("character"),
     CHARACTER_LIST("characters_list"),
     LOCATION("location"),

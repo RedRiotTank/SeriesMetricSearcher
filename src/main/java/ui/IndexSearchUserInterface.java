@@ -6,6 +6,7 @@ import indexsearcher.SearchOption;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.store.FSDirectory;
 
 import javax.swing.*;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Vector;
 
 public class IndexSearchUserInterface {
     private int notEmptyFields = 0;
@@ -27,9 +29,10 @@ public class IndexSearchUserInterface {
     private Map<String,SearchOption> searchOptionMap;
     private Map<String, JComboBox<String>> comboBoxes;
     private Map<String,BooleanClause.Occur> comboBoxesValues;
-    private Map<String, String> queryPerFields;
+
     private ArrayList<MetricDoc> results;
     private JFrame frame;
+
     private final JButton globalSearchButton = new JButton("Global Search");
     private final JButton searchButton = new JButton("Search");
     private JLabel ratingFrom = new JLabel("From (min 1): ");
@@ -49,8 +52,10 @@ public class IndexSearchUserInterface {
     private JRadioButton releaseDatoFromIncluded = new JRadioButton();
     private JRadioButton releaseDateToIncluded = new JRadioButton();
     private String indexPath;
+
+    private Vector<Field> fields = generateFieldsInfo();
+
     public IndexSearchUserInterface(){
-        loadSearchOptionMap();
         showInitialWindow(); // muestra la ventana para ir a abrir el indice
     }
 
@@ -94,7 +99,6 @@ public class IndexSearchUserInterface {
             if (result == JFileChooser.APPROVE_OPTION) { // si se selecciona un archivo
                 indexPath = fileChooser.getSelectedFile().getAbsolutePath();
                 if (isLuceneIndex(indexPath)) {
-                    loadSearchOptionMap(); // se cargan en memoria las searchOptions mapeadas
                     validIndex = true;
                     initializeUI();
                 } else {
@@ -116,12 +120,18 @@ public class IndexSearchUserInterface {
         }
     }
 
+
+
+
+
+
     private void initializeUI() { // inicializa la interfaz grafica (fields search & global search)
         try{
             initializeIndexSearch();
         }catch (IOException e){
             e.printStackTrace();
         }
+
         frame = new JFrame("Index Search");
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
@@ -138,172 +148,97 @@ public class IndexSearchUserInterface {
         globalSearchButton.addActionListener(e -> {
             createGlobalSearchWindow(IndexSearchUserInterface.this);
         });
+
         mainPanel.add(titleAndSearchPanel);
         mainPanel.add(globalSearchButton);
         mainPanel.add(new JLabel());
 
-        String[] campos = {"Dialogo", "Personaje", "Localizacion", "Titulo", "Capitulo(nº)",
-                "Fecha de lanzamiento", "Puntuacion(IMDB)", "Temporada"};
 
-        textFields = new HashMap<>();
-        queryPerFields = new HashMap<>();
-        comboBoxes = new HashMap<>();
-        comboBoxesValues = new HashMap<>();
-
-        for (String campo : campos) {
-            JLabel label = new JLabel(campo + ":");
+        for(Field field : fields) {
+            JLabel label = new JLabel(field.getText() + ":");
             label.setFont(new Font("Arial", Font.BOLD, 13));
-            JTextField textField = new JTextField(20);
+            JComboBox<String> booleanComboBox = new JComboBox<>(new String[]{"MUST", "SHOULD"}); // 1 -> must 0 -> should
 
-            JComboBox<String> booleanComboBox = new JComboBox<>(new String[]{"Seleccionar","MUST", "SHOULD"}); // 1 -> must 0 -> should
-
-
-            if(campo.equals("Puntuacion(IMDB)")){
-                JTextField from = new JTextField(20);
-                JTextField to = new JTextField(20);
-                ratingFrom.setHorizontalAlignment(JLabel.RIGHT); // cambiar fuentes y posicion del texto
-                ratingFrom.setFont(new Font("Arial", Font.BOLD, 11));
-                ratingTo.setHorizontalAlignment(JLabel.RIGHT);
-                ratingTo.setFont(new Font("Arial", Font.BOLD, 11));
-
-                mainPanel.add(label);
-                mainPanel.add(new JLabel()); mainPanel.add(booleanComboBox);
-
-                mainPanel.add(ratingFrom); mainPanel.add(from);
-
-                mainPanel.add(ratingFromIncluded);
-                mainPanel.add(ratingTo); mainPanel.add(to);
-                mainPanel.add(ratingToIncluded);
-                // añadir al textFields 2 valores, el from y el to
-                System.out.println(from.getText());
-                textFields.put(campo + "_from",from);
-                textFields.put(campo + "_to", to);
-
-            } else if(campo.equals("Capitulo(nº)")){
-                JTextField from = new JTextField(20);
-                JTextField to = new JTextField(20);
-                episodeNumberFrom.setHorizontalAlignment(JLabel.RIGHT); // cambiar fuentes y posicion del texto
-                episodeNumberFrom.setFont(new Font("Arial", Font.BOLD, 11));
-                episodeNumberTo.setHorizontalAlignment(JLabel.RIGHT);
-                episodeNumberTo.setFont(new Font("Arial", Font.BOLD, 11));
-
-                mainPanel.add(label);
-                mainPanel.add(new JLabel()); mainPanel.add(booleanComboBox);
-
-                mainPanel.add(episodeNumberFrom); mainPanel.add(from);
-
-                mainPanel.add(episodeNumberFromIncluded);
-                mainPanel.add(episodeNumberTo); mainPanel.add(to);
-                mainPanel.add(episodeNumberToIncluded);
-
-                // añadir al textFields 2 valores, el from y el to
-                textFields.put(campo + "_from",from);
-                textFields.put(campo + "_to", to);
-            } else if(campo.equals("Fecha de lanzamiento")){
-                JTextField from = new JTextField(20);
-                JTextField to = new JTextField(20);
-                releaseDateFrom.setHorizontalAlignment(JLabel.RIGHT); // cambiar fuentes y posicion del texto
-                releaseDateFrom.setFont(new Font("Arial", Font.BOLD, 11));
-                releaseDateTo.setHorizontalAlignment(JLabel.RIGHT);
-                releaseDateTo.setFont(new Font("Arial", Font.BOLD, 11));
-
-                mainPanel.add(label);
-                mainPanel.add(new JLabel()); mainPanel.add(booleanComboBox);
-
-                mainPanel.add(releaseDateFrom); mainPanel.add(from);
-
-                mainPanel.add(releaseDatoFromIncluded);
-                mainPanel.add(releaseDateTo); mainPanel.add(to);
-                mainPanel.add(releaseDateToIncluded);
-                // añadir al textFields 2 valores, el from y el to
-                textFields.put(campo + "_from",from);
-                textFields.put(campo + "_to", to);
-            } else {
-                mainPanel.add(label);
-                mainPanel.add(textField);
-                mainPanel.add(booleanComboBox);
-                textFields.put(campo, textField);
+            //---- pintando
+            mainPanel.add(label);
+            if(!field.hasBounds)
+                mainPanel.add(field.getTextField());
+            else {
+                mainPanel.add(new JLabel());
             }
-            comboBoxes.put(campo,booleanComboBox);
-            booleanComboBox.addActionListener(e -> {
-                String selectedValue = (String) booleanComboBox.getSelectedItem();
-                BooleanClause.Occur occur;
 
-                if (selectedValue.equals("MUST")) {
-                    occur = BooleanClause.Occur.MUST;
-                } else if (selectedValue.equals("SHOULD")) {
-                    occur = BooleanClause.Occur.SHOULD;
-                } else {
-                    occur = BooleanClause.Occur.SHOULD;
-                }
+            mainPanel.add(booleanComboBox);
 
-                comboBoxesValues.put(campo, occur);
-            });
+            if(field.hasBounds){
+                JLabel from = new JLabel("From:");
+                from.setHorizontalAlignment(JLabel.RIGHT);
+                JLabel to = new JLabel("To:");
+                to.setHorizontalAlignment(JLabel.RIGHT);
+
+                mainPanel.add(from);
+
+                mainPanel.add(field.getFrom());
+                mainPanel.add(field.getFromInclusive());
+
+                mainPanel.add(to);
+                mainPanel.add(field.getTo());
+                mainPanel.add(field.getToInclusive());
+            }
         }
+
         // preparacion de la busqueda
         searchButton.addActionListener(e -> {
-            String[] campos_map = {"Dialogo", "Personaje", "Localizacion", "Titulo", "Capitulo(nº)_from","Capitulo(nº)_to","Fecha de lanzamiento_from","Fecha de lanzamiento_to", "Puntuacion(IMDB)_from","Puntuacion(IMDB)_to", "Temporada"};
-            String[] episode_bounds = {"", ""};
-            boolean includeLower=false, includeUpper = false;
-            SearchOption option = SearchOption.EPISODE_VIEWS; // por inicializar algo
-            for(String campo : campos_map) {
-                String fieldValue = textFields.get(campo).getText().trim();
-                queryPerFields.put(campo, fieldValue);
-                if (!fieldValue.isEmpty()) { // nos quedamos con los campos que no estén vacíos
-                    notEmptyFields++; // para saber si la busqueda es individual
-                    option = getSearchOptionByField(campo);
+
+            boolean oneHasText = false;
+
+            for(Field field : fields){
+                if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
+                    oneHasText = true;
                     try {
-                        indexSearch.addQuery(fieldValue,option);
+                        indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()));
                     } catch (IOException | ParseException | java.text.ParseException ex) {
                         throw new RuntimeException(ex);
                     }
+                } else if (!field.getFrom().getText().isEmpty() && !field.getTo().getText().isEmpty()) {
+                    oneHasText = true;
 
-                    // para numeros de capitulos
-                    /*
-                    if (campo.equals("Capitulo(nº)_from")) {
-                        String value = textFields.get(campo).getText().trim();
-                        includeLower = (episodeNumberFromIncluded.isSelected());
-                        episode_bounds[0] = value;
-                    } else if (campo.equals("Capitulo(nº)_to")) {
-                        String value = textFields.get(campo).getText().trim();
-                        includeUpper = (episodeNumberToIncluded.isSelected());
-                        episode_bounds[1] = value;
-                        try {
-                            indexSearch.addQuery(episode_bounds, option, includeLower, includeUpper);
-                        } catch (IOException | ParseException | java.text.ParseException ex) {
-                            throw new RuntimeException(ex);
-                        }
+                    String fromZero = field.getFrom().getText(),
+                            toZero = field.getTo().getText();
+
+                    if(field.getFrom().getText().length() == 1) fromZero = "00" + field.getFrom().getText();
+                    if(field.getTo().getText().length() == 1) toZero = "00" + field.getTo().getText();
+                    if(field.getFrom().getText().length() == 2) fromZero = "0" + field.getFrom().getText();
+                    if(field.getTo().getText().length() == 2) toZero = "0" + field.getTo().getText();
+
+                    String[] bounds = {fromZero, toZero};
+                    try {
+                        indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected());
+                    } catch (IOException | ParseException | java.text.ParseException ex) {
+                        throw new RuntimeException(ex);
                     }
-                    */
-
-
-
-                    /*
-                    queryPerFields.put(campo, fieldValue);
-                    comboBoxesValues.put(campo, String.valueOf(comboBoxes.get(campo).getSelectedIndex()));
-                    System.out.println(comboBoxesValues.get(campo));
-                    System.out.println(campo + ": " + textFields.get(campo).getText());
-                    */
-                    //indexSearch.addQuery();
                 }
+
+
+
             }
 
-            if(!queryPerFields.isEmpty()){ // si hay al menos un campo relleno hace la búsqueda
+
+            if(oneHasText){ // si hay al menos un campo relleno hace la búsqueda
                 try {
                     search(false);
                 } catch (IOException | ParseException ex) {
                     throw new RuntimeException(ex);
                 }
 
-                for (String campo : campos) {
-                    textFields.get(campo).setText("");
+                for (Field field : fields) {
+                    field.getTextField().setText("");
+                    field.getTo().setText("");
+                    field.getFrom().setText("");
                 }
             } else{
                 JOptionPane.showMessageDialog(frame, "Debes rellenar al menos un campo", "Advertencia", JOptionPane.WARNING_MESSAGE);
                 System.out.println("No hay ningún campo relleno");
             }
-
-
 
 
         });
@@ -379,9 +314,9 @@ public class IndexSearchUserInterface {
             // TODO: hacer la busqueda global
             System.out.println("Búsqueda global");
         }else{
-            if(notEmptyFields == 1){
-                results = indexSearch.search(comboBoxesValues.get("Dialogo"));
-            }
+
+            results = indexSearch.search(BooleanClause.Occur.MUST);
+
             // TODO: Mandar el campo que está relleno y accederlo con el searchOptionMap
             createResultsWindow();
         }
@@ -496,49 +431,49 @@ public class IndexSearchUserInterface {
         }
     }
 
-    private void loadSearchOptionMap(){
-        searchOptionMap = new HashMap<>();
-        String[] campos = {"Dialogo", "Personaje", "Localizacion", "Titulo", "Capitulo(nº)_from",
-                "Capitulo(nº)_to","Fecha de lanzamiento_from","Fecha de lanzamiento_to", "Puntuacion(IMDB)_from",
-                "Puntuacion(IMDB)_to", "Temporada"};
-
-        //String[] campos = {"Nº del episodio", "Diálogo", "Personaje", "Localización del diálogo", "Título del episodio", "Fecha de lanzamiento del episodio", "Puntuación en IMDB", "Nº de temporada"};
-
-        for (String campo : campos) {
-            SearchOption searchOption = getSearchOptionByField(campo);
-            searchOptionMap.put(campo, searchOption);
-        }
-
-    }
-
     private static SearchOption getSearchOptionByField(String field) {
         switch (field) {
-            case "Capitulo(nº)_from":
-                return SearchOption.EPISODE_NUMBER;
-            case "Capitulo(nº)_to":
-                return SearchOption.EPISODE_NUMBER;
-            case "Dialogo":
-                return SearchOption.SPOKEN_WORDS_DIALOG;
-            case "Personaje":
+            case "spoken_words":
+                return SearchOption.SPOKEN_WORDS;
+
+            case "character":
                 return SearchOption.CHARACTER;
-            case "Localizacion":
+
+            case "location":
                 return SearchOption.LOCATION;
-            case "Titulo":
+
+            case "title":
                 return SearchOption.TITLE;
-            case "Fecha de lanzamiento_from":
+
+            case "episode_number":
+                return SearchOption.EPISODE_NUMBER;
+
+            case "release_date":
                 return SearchOption.RELEASE_DATE;
-            case "Fecha de lanzamiento_to":
-                return SearchOption.RELEASE_DATE;
-            case "Puntuacion(IMDB)_to":
+
+            case "imdb_rating":
                 return SearchOption.IMDB_RATING;
-            case "Puntuacion(IMDB)_from":
-                return SearchOption.IMDB_RATING;
-            case "Temporada":
+
+
+            case "season":
                 return SearchOption.SEASON;
 
             default:
                 throw new IllegalArgumentException("Campo no reconocido: " + field);
         }
+    }
+
+    private static Vector<Field> generateFieldsInfo(){
+        Vector<Field> fields = new Vector<>();
+        fields.add(new Field("spoken_words", false));
+        fields.add(new Field( "character",false));
+        fields.add(new Field( "location", false));
+        fields.add(new Field( "title",false));
+        fields.add(new Field( "episode_number", true));
+        fields.add(new Field( "release_date", true));
+        fields.add(new Field("imdb_rating", true));
+        fields.add(new Field( "season", true));
+        return fields;
     }
 
     public static void main(String[] args) {

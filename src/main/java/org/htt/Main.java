@@ -15,12 +15,12 @@ public class Main {
        IndexSearch indexSearch = new IndexSearch("E:\\dev\\SeriesMetricSearcher\\files\\index");
 
        //Ejemplo Nº de episodio
-       String[] bounds = {"1", "8"};
-       indexSearch.addQuery(bounds, SearchOption.EPISODE_NUMBER, true, true);
+       String[] bounds = {"049", "100"};
+       indexSearch.addQuery(bounds, SearchOption.EPISODE_NUMBER, false, false);
        ArrayList<MetricDoc> s = indexSearch.search(BooleanClause.Occur.MUST);        //MUST = AND, SHOULD = OR, MUST_NOT = NOT
 
-        String[] boundss = {"4", "8"};
-        indexSearch.addQuery(boundss, SearchOption.SEASON, true, true);
+        String[] boundss = {"19", "21"};
+        indexSearch.addQuery(boundss, SearchOption.SEASON, false, true);
         ArrayList<MetricDoc> h = indexSearch.search(BooleanClause.Occur.MUST);        //MUST = AND, SHOULD = OR, MUST_NOT = NOT
 
        //spoken words
@@ -65,6 +65,13 @@ public class Main {
         //ejemplo global query
         ArrayList<MetricDoc> all = indexSearch.allFieldsSearch("halloween 777");
 
+
+        String[] b6 = {"50", "400"};     //formatos aceptados: dd-mm-yy dd/mm/yy d/m/yy
+        indexSearch.addQuery(b6, SearchOption.EPISODE_NUMBER, true, true);
+
+        indexSearch.addQuery("homer", SearchOption.CHARACTER);
+
+        ArrayList<MetricDoc> quer = indexSearch.search(BooleanClause.Occur.MUST);
 
         indexSearch.closeIndex();
 
