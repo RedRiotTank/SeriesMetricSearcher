@@ -227,7 +227,7 @@ public class IndexSearchUserInterface {
             if(oneHasText){ // si hay al menos un campo relleno hace la búsqueda
                 try {
                     search(false);
-                } catch (IOException | ParseException ex) {
+                } catch (IOException | ParseException | java.text.ParseException ex) {
                     throw new RuntimeException(ex);
                 }
 
