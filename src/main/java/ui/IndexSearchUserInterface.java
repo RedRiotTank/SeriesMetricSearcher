@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Vector;
 
 public class IndexSearchUserInterface {
+    private JTextField globalSearchTextField; // campo para busqueda global
     private int notEmptyFields = 0;
     private boolean intervalSearchs = false;
     private IndexSearch indexSearch;
@@ -279,15 +280,15 @@ public class IndexSearchUserInterface {
         titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
 
-        JTextField searchTextField = new JTextField(20);
+        globalSearchTextField = new JTextField(20);
         JButton globalSearchButton = new JButton("Global Search");
 
         globalSearchButton.addActionListener(e -> {
-            String globalQuery = searchTextField.getText();
+            String globalQuery = globalSearchTextField.getText();
             System.out.println("Global Search Term: " + globalQuery);
             try {
                 search(true);
-            } catch (IOException | ParseException ex) {
+            } catch (IOException | ParseException | java.text.ParseException ex) {
                 throw new RuntimeException(ex);
             }
         });
@@ -299,7 +300,7 @@ public class IndexSearchUserInterface {
         });
 
         globalSearchPanel.add(titleLabel);
-        globalSearchPanel.add(searchTextField);
+        globalSearchPanel.add(globalSearchTextField);
         globalSearchPanel.add(globalSearchButton);
         globalSearchPanel.add(backButton);
 
@@ -309,18 +310,16 @@ public class IndexSearchUserInterface {
         globalSearchFrame.setVisible(true);
     }
 
-    private void search(boolean global) throws IOException, ParseException {
+    private void search(boolean global) throws IOException, ParseException, java.text.ParseException {
         if(global){
-            // TODO: hacer la busqueda global
-            System.out.println("Búsqueda global");
+            // TODO: busqeuda global
+            String queryGlobal = globalSearchTextField.getText();
+            results = indexSearch.allFieldsSearch(queryGlobal);
         }else{
-
             results = indexSearch.search(BooleanClause.Occur.MUST);
-
-            // TODO: Mandar el campo que está relleno y accederlo con el searchOptionMap
-            createResultsWindow();
         }
 
+        createResultsWindow();
     }
 
     private void createResultsWindow() {
