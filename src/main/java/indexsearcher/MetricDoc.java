@@ -25,19 +25,21 @@ public class MetricDoc {
     private final String views;
 
     public MetricDoc(Document doc){
-        this.episode_number = doc.get("episode_number");
+        this.episode_number = doc.get("episode_number_stored");
         this.spoken_words = doc.get("spoken_words");
 
-        String imdbRatingString = doc.get("imdb_rating").split("\\.")[0];
-        int imdbRatingInteger = Integer.parseInt(imdbRatingString);
-        double normalizedImdbRating = imdbRatingInteger / 10.0;
-        String imdbRatingStringNormalized = String.valueOf(normalizedImdbRating);
-        this.imdb_rating = imdbRatingStringNormalized;
+        String imdbRatingString = doc.get("imdb_rating_stored");
+        //double imdbRatingDouble = Double.parseDouble(imdbRatingString);
+        //String imdbRatingStringNormalized = String.valueOf(imdbRatingDouble);
+
+        this.imdb_rating = imdbRatingString;
 
         this.imdb_votes = doc.get("imdb_votes");
-        //this.release_date =doc.get("release_date");
-        this.release_date = new SimpleDateFormat("dd-MM-yy").format((new Date(Long.parseLong(doc.get("release_date")))));
-        this.season = doc.get("season");
+
+        this.release_date = new SimpleDateFormat("dd-MM-yy").format((new Date(Long.parseLong(doc.get("release_date_stored")))));
+
+        this.season = doc.get("season_stored");
+
         this.title = doc.get("title");
         this.views = doc.get("episode_views");
 

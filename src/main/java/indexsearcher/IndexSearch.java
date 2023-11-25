@@ -2,8 +2,10 @@ package indexsearcher;
 
 import customanalyzers.EnHunspellAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
+import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -39,15 +42,18 @@ public class IndexSearch {
     }
 
     public void addQuery(String queryString, SearchOption so) throws IOException, ParseException, java.text.ParseException {
-        String[] query = {queryString};
+        String[] query = {queryString, ""};
         this.addQuery(query, so, false, false);
     }
+
+
 
 
     private void addQueryNumber(String[] queryString, SearchOption so, boolean includelower, boolean includeupper){
         String from = queryString[0].replaceAll(" ", "");
         String to = queryString[1].replaceAll(" ", "");
 
+        /*
         if(so.getField().equals("imdb_rating")) {
 
             if(from.contains(".")){
@@ -62,8 +68,11 @@ public class IndexSearch {
                 to = to + "0";
             }
         }
+        */
 
-        querieList.add(TermRangeQuery.newStringRange(so.getField(),from,to,includelower,includeupper));
+
+
+        querieList.add(IntPoint.newRangeQuery(so.getField(),Integer.parseInt(from), Integer.parseInt(to)));
     }
 
     private void addQueryDate(String[] queryString, SearchOption so, boolean includelower, boolean includeupper) throws java.text.ParseException {
@@ -87,17 +96,49 @@ public class IndexSearch {
     // si retorna null es fallo, si retorna arraylist vacio es que no hay resultados.
     public void addQuery(String[] queryString, SearchOption so, boolean includelower, boolean includeupper) throws IOException, ParseException, java.text.ParseException {
         QueryParser parser = new QueryParser(so.getField(), so.getAnalyzer());
-        Query query = null;
+
+
+        String from = queryString[0].replaceAll(" ", "").replaceAll("[^0-9.]", "");
+        String to = queryString[1].replaceAll(" ", "").replaceAll("[^0-9.]", "");
+
+
         switch (so.getField()){
 
-            case "imdb_rating":
             case "episode_number":
             case "season":
-                addQueryNumber(queryString, so, includelower, includeupper);
+                int fromint = Integer.parseInt(from),
+                    toint = Integer.parseInt(to);
 
+                if(!includelower) fromint++;
+                if(!includeupper) toint--;
+
+                querieList.add(IntPoint.newRangeQuery(so.getField(),fromint, toint));
                 break;
+
+            case "imdb_rating":
+                float fromfloat = Float.parseFloat(from),
+                        tofloat = Float.parseFloat(to);
+
+                if(!includelower) fromfloat+=0.1;
+                if(!includeupper) tofloat-=0.1;
+
+                querieList.add(FloatPoint.newRangeQuery(so.getField(),fromfloat, tofloat));
+                break;
+
             case "release_date":
-                addQueryDate(queryString, so, includelower, includeupper);
+                String fromdateString = queryString[0].replaceAll(" ", "").replaceAll("/", "-");
+                String todateString = queryString[1].replaceAll(" ", "");
+
+                Date fromdate = new SimpleDateFormat("dd-MM-yy").parse(fromdateString),
+                    todate = new SimpleDateFormat("dd-MM-yy").parse(todateString);
+
+                if(!includelower) fromdate.setTime(fromdate.getTime() + 86400000);
+                if(!includeupper) todate.setTime(todate.getTime() - 86400000);
+
+                long fromlong = fromdate.getTime(),
+                        tolong = todate.getTime();
+
+                querieList.add(LongPoint.newRangeQuery(so.getField(),fromlong, tolong));
                 break;
 
             default:
@@ -161,7 +202,6 @@ public class IndexSearch {
 
         for (ScoreDoc doc : topDocs.scoreDocs)
             metricDocList.add(new MetricDoc(searcher.doc(doc.doc)));
-
 
         return metricDocList;
     }
