@@ -6,14 +6,14 @@ import org.apache.lucene.search.BooleanClause;
 import javax.swing.*;
 
 public class Field {
-    String text;
+    private String text;
     boolean hasBounds; //true = must, false = should
 
-    JTextField textField;
-    JTextField from, to;
+    private JTextField textField;
+    private JTextField from, to;
 
-    JRadioButton fromInclusive, toInclusive;
-
+    private JRadioButton fromInclusive, toInclusive;
+    private JComboBox<String> mustOrShouldComboBox, andOrComboBox;
 
     public Field(String text, boolean hasBounds){
         this.text = text;
@@ -23,6 +23,8 @@ public class Field {
         to = new JTextField();
         fromInclusive = new JRadioButton("Included");
         toInclusive = new JRadioButton("Included");
+        mustOrShouldComboBox = new JComboBox<>(new String[]{"MUST","SHOULD"});
+        andOrComboBox = new JComboBox<>(new String[]{"AND","OR"});
     }
 
     public String getText() {
@@ -52,4 +54,27 @@ public class Field {
     public JRadioButton getToInclusive() {
         return toInclusive;
     }
+
+    public JComboBox<String> getMustOrShouldComboBox() {
+        return mustOrShouldComboBox;
+    }
+
+    public JComboBox<String> getAndOrComboBox() {
+        return andOrComboBox;
+    }
+
+    public String getValueMustOrShould(){
+        if(mustOrShouldComboBox.getSelectedIndex() == 0)
+            return "must";
+        else
+            return "should";
+    }
+
+    public String getValueAndOrCombo(){
+        if(andOrComboBox.getSelectedIndex() == 0)
+            return "and";
+        else
+            return "or";
+    }
+
 }
