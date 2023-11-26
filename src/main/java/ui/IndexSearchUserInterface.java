@@ -177,7 +177,7 @@ public class IndexSearchUserInterface {
                 if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
                     oneHasText = true;
                     try {
-                        indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()));
+                        indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()), field.getValueMustOrShould());
                     } catch (IOException | ParseException | java.text.ParseException ex) {
                         throw new RuntimeException(ex);
                     }
@@ -194,7 +194,7 @@ public class IndexSearchUserInterface {
 
                     String[] bounds = {fromZero, toZero};
                     try {
-                        indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected());
+                        indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected(), field.getValueMustOrShould());
                     } catch (IOException | ParseException | java.text.ParseException ex) {
                         throw new RuntimeException(ex);
                     }
@@ -325,7 +325,7 @@ public class IndexSearchUserInterface {
             }
         }else{
             try{
-                results = indexSearch.search(BooleanClause.Occur.MUST);
+                results = indexSearch.search();
             }catch (NumberFormatException e){
                 System.err.println("Sintax error");
                 results = null;
