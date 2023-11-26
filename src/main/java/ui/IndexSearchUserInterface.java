@@ -6,7 +6,6 @@ import indexsearcher.SearchOption;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.store.FSDirectory;
 
 import javax.swing.*;
@@ -16,45 +15,24 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Vector;
+import java.util.List;
 
 public class IndexSearchUserInterface {
+    private final JButton facetsButton = new JButton("Facets");
     private JTextField globalSearchTextField; // campo para busqueda global
-    private int notEmptyFields = 0;
-    private boolean intervalSearchs = false;
     private IndexSearch indexSearch;
-    private Map<String, JTextField> textFields;
-
-    private Map<String,SearchOption> searchOptionMap;
-    private Map<String, JComboBox<String>> comboBoxes;
-    private Map<String,BooleanClause.Occur> comboBoxesValues;
-
     private ArrayList<MetricDoc> results;
     private JFrame frame;
-
     private final JButton globalSearchButton = new JButton("Global Search");
     private final JButton searchButton = new JButton("Search");
-    private JLabel ratingFrom = new JLabel("From (min 1): ");
-    private JLabel ratingTo = new JLabel("To (max 10): ");
-    private JLabel episodeNumberFrom = new JLabel("From (min 1): ");
-    private JLabel episodeNumberTo = new JLabel("To (max 560): ");
-
-    private JRadioButton ratingFromIncluded = new JRadioButton();
-    private JRadioButton ratingToIncluded = new JRadioButton();
-
-    private JRadioButton episodeNumberFromIncluded = new JRadioButton();
-    private JRadioButton episodeNumberToIncluded = new JRadioButton();
-
-    private JLabel releaseDateFrom = new JLabel("From (dd-mm-yy dd/mm/yy d/m/yy): ");
-    private JLabel releaseDateTo = new JLabel("To (dd-mm-yy dd/mm/yy d/m/yy): ");
-
-    private JRadioButton releaseDatoFromIncluded = new JRadioButton();
-    private JRadioButton releaseDateToIncluded = new JRadioButton();
     private String indexPath;
-
     private Vector<Field> fields = generateFieldsInfo();
+
+    private int currentPage = 1;
+    private final int resultsPerPage = 10;
+
+    private JDialog resultsDialog;
 
     public IndexSearchUserInterface(){
         showInitialWindow(); // muestra la ventana para ir a abrir el indice
@@ -122,10 +100,6 @@ public class IndexSearchUserInterface {
     }
 
 
-
-
-
-
     private void initializeUI() { // inicializa la interfaz grafica (fields search & global search)
         try{
             initializeIndexSearch();
@@ -136,7 +110,7 @@ public class IndexSearchUserInterface {
         frame = new JFrame("Index Search");
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
-        JPanel mainPanel = new JPanel(new GridLayout(0, 3));
+        JPanel mainPanel = new JPanel(new GridLayout(0, 4));
         mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JPanel titleAndSearchPanel = new JPanel(new BorderLayout()); // panel aux
@@ -146,19 +120,20 @@ public class IndexSearchUserInterface {
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
         titleAndSearchPanel.add(titleLabel, BorderLayout.NORTH);
 
-        globalSearchButton.addActionListener(e -> {
-            createGlobalSearchWindow(IndexSearchUserInterface.this);
-        });
+        globalSearchButton.addActionListener(e -> createGlobalSearchWindow(IndexSearchUserInterface.this));
 
         mainPanel.add(titleAndSearchPanel);
-        mainPanel.add(globalSearchButton);
         mainPanel.add(new JLabel());
 
+        facetsButton.addActionListener(e ->{
+            createFacetsWindow(); // metodo para crear la ventana de las facetas
+        });
+        mainPanel.add(facetsButton);
+        mainPanel.add(new JLabel());
 
         for(Field field : fields) {
             JLabel label = new JLabel(field.getText() + ":");
             label.setFont(new Font("Arial", Font.BOLD, 13));
-            JComboBox<String> booleanComboBox = new JComboBox<>(new String[]{"MUST", "SHOULD"}); // 1 -> must 0 -> should
 
             //---- pintando
             mainPanel.add(label);
@@ -168,7 +143,8 @@ public class IndexSearchUserInterface {
                 mainPanel.add(new JLabel());
             }
 
-            mainPanel.add(booleanComboBox);
+            mainPanel.add(field.getAndOrComboBox());
+            mainPanel.add(field.getMustOrShouldComboBox());
 
             if(field.hasBounds){
                 JLabel from = new JLabel("From:");
@@ -180,10 +156,12 @@ public class IndexSearchUserInterface {
 
                 mainPanel.add(field.getFrom());
                 mainPanel.add(field.getFromInclusive());
+                mainPanel.add(new JLabel());
 
                 mainPanel.add(to);
                 mainPanel.add(field.getTo());
                 mainPanel.add(field.getToInclusive());
+                mainPanel.add(new JLabel());
             }
         }
 
@@ -193,6 +171,9 @@ public class IndexSearchUserInterface {
             boolean oneHasText = false;
 
             for(Field field : fields){
+                // para acceder a los combos (MUST/SHOULD) y (AND/OR)
+                System.out.println(field.getValueMustOrShould());
+                System.out.println(field.getValueAndOrCombo());
                 if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
                     oneHasText = true;
                     try {
@@ -218,11 +199,7 @@ public class IndexSearchUserInterface {
                         throw new RuntimeException(ex);
                     }
                 }
-
-
-
             }
-
 
             if(oneHasText){ // si hay al menos un campo relleno hace la búsqueda
                 try {
@@ -241,11 +218,11 @@ public class IndexSearchUserInterface {
                 System.out.println("No hay ningún campo relleno");
             }
 
-
         });
 
         mainPanel.add(new JLabel());
         mainPanel.add(new JLabel());
+        mainPanel.add(globalSearchButton);
         mainPanel.add(searchButton);
 
         // para cerrar el índice cuando se cierre la ventana principal (fields search)
@@ -284,6 +261,7 @@ public class IndexSearchUserInterface {
         JButton globalSearchButton = new JButton("Global Search");
 
         globalSearchButton.addActionListener(e -> {
+
             String globalQuery = globalSearchTextField.getText();
             System.out.println("Global Search Term: " + globalQuery);
             try {
@@ -291,6 +269,9 @@ public class IndexSearchUserInterface {
             } catch (IOException | ParseException | java.text.ParseException ex) {
                 throw new RuntimeException(ex);
             }
+            // TODO: cerrar la ventana de globalSearch al buscar (probarlo con el indice bueno)
+            globalSearchFrame.dispose(); // cierra la ventana
+
         });
 
         JButton backButton = new JButton("Back to Fields Search");
@@ -310,21 +291,70 @@ public class IndexSearchUserInterface {
         globalSearchFrame.setVisible(true);
     }
 
+    private void createFacetsWindow(){ // TODO: añadir funcionalidad real
+        JFrame facetsFrame = new JFrame("Facets View");
+        facetsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        JPanel facetsPanel = new JPanel(new GridLayout(0,3));
+
+        JButton backButton = new JButton("Back");
+        backButton.addActionListener(e1 -> {
+            facetsFrame.dispose(); // se cierra
+            showMainWindow(); // se abre la principal
+        });
+
+        for(int i = 0; i < 14; i++) // TODO: (apaño visual) cambiar este for por el que muestre las facetas
+            facetsPanel.add(new JLabel());
+        facetsPanel.add(backButton);
+
+
+        facetsFrame.getContentPane().add(facetsPanel);
+        facetsFrame.pack();
+        facetsFrame.setSize(1100, 550); // tam ventana resultados
+        facetsFrame.setLocationRelativeTo(frame);
+        facetsFrame.setVisible(true);
+    }
     private void search(boolean global) throws IOException, ParseException, java.text.ParseException {
         if(global){
             // TODO: busqeuda global
             String queryGlobal = globalSearchTextField.getText();
-            results = indexSearch.allFieldsSearch(queryGlobal);
+            try{
+                results = indexSearch.allFieldsSearch(queryGlobal);
+            }catch (NumberFormatException e) {
+                System.err.println("Sintax error");
+                results = null;
+            }
         }else{
-            results = indexSearch.search(BooleanClause.Occur.MUST);
+            try{
+                results = indexSearch.search(BooleanClause.Occur.MUST);
+            }catch (NumberFormatException e){
+                System.err.println("Sintax error");
+                results = null;
+            }
+
         }
+
+        currentPage = 1;
 
         createResultsWindow();
     }
 
     private void createResultsWindow() {
-        JFrame resultsFrame = new JFrame("Query Results");
-        resultsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // se cambia el frame por un dialog para poder actualizarlo en tiempo real
+        if(resultsDialog == null){
+            resultsDialog = new JDialog(frame,"Query Results", true);
+            resultsDialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+            resultsDialog.setSize(1100,550);
+            resultsDialog.setLocationRelativeTo(frame);
+        }
+        // si no hay resultados se muestra mensaje de error o si es null error por sintaxis
+        if(results == null){
+            JOptionPane.showMessageDialog(resultsDialog, "Sintax error in query", "Sintax error", JOptionPane.ERROR_MESSAGE);
+            return;
+        } else if(results.isEmpty()){
+            JOptionPane.showMessageDialog(resultsDialog, "There are no results for this query", "Without results", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         JPanel resultsPanel = new JPanel(new BorderLayout());
         resultsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -334,35 +364,78 @@ public class IndexSearchUserInterface {
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
         resultsPanel.add(titleLabel, BorderLayout.NORTH);
 
-        JPanel resultsGridPanel = getResultsGridPanel();
+        // variables para la paginación de los resultados
+        int startIndex = (currentPage - 1) * resultsPerPage;
+        int endIndex = Math.min(startIndex + resultsPerPage,results.size());
+        List<MetricDoc> currentPageResults = results.subList(startIndex,endIndex);
+
+        JPanel resultsGridPanel = getResultsGridPanel(currentPageResults);
 
         // se aniade este componente para los casos en los que sea mas grande el contenido que la ventana
         JScrollPane scrollPane = new JScrollPane(resultsGridPanel);
         resultsPanel.add(scrollPane, BorderLayout.CENTER);
 
+        // panel para los botones de abajo
+        JPanel buttonsPanel = new JPanel();
+        buttonsPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
+        // NEW QUERY BUTTON
         JButton newSearchButton = new JButton("New query");
         newSearchButton.addActionListener(e -> {
-            resultsFrame.dispose(); // se cierra
+            resultsDialog.dispose(); // se cierra
             showMainWindow(); // se abre la principal
         });
 
-        resultsPanel.add(newSearchButton, BorderLayout.SOUTH);
+        buttonsPanel.add(newSearchButton);
+        // PREVIOUS DOCS BUTTON
+        JButton previousDocsButton = new JButton("Previous 10 docs");
+        previousDocsButton.addActionListener(e->{
+            currentPage--;
+            if(isValidPage(currentPage)) // para no mostrar una ventana sin resultados
+                createResultsWindow();
+            else{
+                JOptionPane.showMessageDialog(resultsDialog, "No hay más resultados");
+                currentPage++;
+            }
+        });
+        buttonsPanel.add(previousDocsButton);
 
-        resultsFrame.getContentPane().add(resultsPanel);
-        resultsFrame.pack();
-        resultsFrame.setSize(1100, 550); // tam ventana resultados
-        resultsFrame.setLocationRelativeTo(frame);
-        resultsFrame.setVisible(true);
+        // NEXT DOCS BUTTON
+        JButton nextDocsButton = new JButton("Next 10 docs");
+        nextDocsButton.addActionListener(e->{
+            currentPage++;
+            if(isValidPage(currentPage)) // para no mostrar una ventana sin resultados
+                createResultsWindow();
+            else{
+                JOptionPane.showMessageDialog(resultsDialog, "No hay más resultados");
+                currentPage--;
+            }
+        });
+        buttonsPanel.add(nextDocsButton);
+
+        // se añade el panel de botones al panel principal de la ventana de resultados
+        resultsPanel.add(buttonsPanel, BorderLayout.SOUTH);
+
+        resultsDialog.getContentPane().removeAll();
+        resultsDialog.getContentPane().add(resultsPanel);
+        resultsDialog.setVisible(true);
     }
 
-    private JPanel getResultsGridPanel() { // se encarga de la ventana donde se muestran los resultados
+    // método para controlar que no hay mas resultados en la busqueda y saltar excepcion
+    private boolean isValidPage(int page) {
+        int startIndex = (page - 1) * resultsPerPage;
+        return startIndex < results.size() && startIndex >= 0;
+    }
+
+    private JPanel getResultsGridPanel(List<MetricDoc> results) { // se encarga de la ventana donde se muestran los resultados
         JPanel resultsGridPanel = new JPanel(new GridLayout(0, 2)); // columnas y filas
         resultsGridPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         for (int i = 0; i < results.size(); i++) { // para cada documento
             MetricDoc doc = results.get(i);
 
-            String resultText = "Documento nº " + (i + 1) + "\n" +
+            // con las variables current page y results per page controlamos el numero de los docs en paginacion
+            String resultText = "Documento nº " + (i + 1 + ((currentPage - 1)* resultsPerPage)) + "\n" +
                     "Título: " + doc.getTitle() +
                     "\nNúmero de Episodio: " + doc.getEpisode_number() +
                     "\nPersonaje: " + doc.getCharacter();
@@ -386,8 +459,9 @@ public class IndexSearchUserInterface {
     }
 
     private void showDetailsWindow(MetricDoc doc) {
-        JFrame detailsFrame = new JFrame("Chapter details");
-        detailsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        // se cambia a dialog para que se pueda ver por encima de la ventana de results
+        JDialog detailsDialog = new JDialog(resultsDialog, "Chapter details", true);
+        detailsDialog.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         JPanel detailsPanel = new JPanel(new BorderLayout());
         detailsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -401,18 +475,25 @@ public class IndexSearchUserInterface {
                 "\nDialog: " + doc.getSpoken_words() +
                 "\nLocation: " + doc.getLocation() +
                 "\nRating IMDB: " + doc.getImdb_rating() +
-                //"\nVotes in IMDB: " + doc.getImdb_votes() +
                 "\nRelease date: " + doc.getRelease_date() +
                 "\nSeason: " + doc.getSeason();
         detailsTextArea.setText(detailsText);
 
         detailsPanel.add(new JScrollPane(detailsTextArea), BorderLayout.CENTER);
 
-        detailsFrame.getContentPane().add(detailsPanel);
-        detailsFrame.pack();
-        detailsFrame.setSize(600, 400);
-        detailsFrame.setLocationRelativeTo(null);
-        detailsFrame.setVisible(true);
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> detailsDialog.dispose());
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(closeButton);
+
+        detailsPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        detailsDialog.getContentPane().add(detailsPanel);
+        detailsDialog.pack();
+        detailsDialog.setSize(400, 200);
+        detailsDialog.setLocationRelativeTo(null);
+        detailsDialog.setVisible(true);
     }
 
 
@@ -431,35 +512,17 @@ public class IndexSearchUserInterface {
     }
 
     private static SearchOption getSearchOptionByField(String field) {
-        switch (field) {
-            case "spoken_words":
-                return SearchOption.SPOKEN_WORDS;
-
-            case "character":
-                return SearchOption.CHARACTER;
-
-            case "location":
-                return SearchOption.LOCATION;
-
-            case "title":
-                return SearchOption.TITLE;
-
-            case "episode_number":
-                return SearchOption.EPISODE_NUMBER;
-
-            case "release_date":
-                return SearchOption.RELEASE_DATE;
-
-            case "imdb_rating":
-                return SearchOption.IMDB_RATING;
-
-
-            case "season":
-                return SearchOption.SEASON;
-
-            default:
-                throw new IllegalArgumentException("Campo no reconocido: " + field);
-        }
+        return switch (field) {
+            case "spoken_words" -> SearchOption.SPOKEN_WORDS;
+            case "character" -> SearchOption.CHARACTER;
+            case "location" -> SearchOption.LOCATION;
+            case "title" -> SearchOption.TITLE;
+            case "episode_number" -> SearchOption.EPISODE_NUMBER;
+            case "release_date" -> SearchOption.RELEASE_DATE;
+            case "imdb_rating" -> SearchOption.IMDB_RATING;
+            case "season" -> SearchOption.SEASON;
+            default -> throw new IllegalArgumentException("Campo no reconocido: " + field);
+        };
     }
 
     private static Vector<Field> generateFieldsInfo(){

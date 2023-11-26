@@ -32,7 +32,7 @@ public class IndexSearch {
     private final Vector<Query> querieList = new Vector<>();
     private Query q = null;
 
-    private int maxResults = 10;
+    private int maxResults = 50;
 
     public IndexSearch(String indexDir) throws IOException {
         Directory directory = FSDirectory.open(Paths.get(indexDir));
