@@ -23,11 +23,16 @@ public class EnHunspellAnalyzer extends Analyzer {
     public EnHunspellAnalyzer() throws IOException, ParseException {
         InputStream affixStream = getClass().getResourceAsStream("/en_US.aff"),
                 dictStream = getClass().getResourceAsStream("/en_US.dic");
+        FSDirectory directoryTemp = null;
 
+        if(System.getProperty("os.name").toLowerCase().contains("nix") ||System.getProperty("os.name").toLowerCase().contains("nux")){
+            directoryTemp = FSDirectory.open(Paths.get("/tmp"));
+        }
+        else if(System.getProperty("os.name").toLowerCase().contains("win")){
+            directoryTemp = FSDirectory.open(Paths.get("/temp"));
+        }
 
-
-        FSDirectory directoryTemp = FSDirectory.open(Paths.get("/temp"));
-        if(affixStream != null)
+        if(affixStream != null && directoryTemp != null)
             dictionary = new Dictionary(directoryTemp, "temporalFile", affixStream, dictStream);
     }
 
