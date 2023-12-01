@@ -8,6 +8,8 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.store.FSDirectory;
 
 import javax.swing.*;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -246,7 +248,7 @@ public class IndexSearchUserInterface {
             searchButton.setForeground(new Color(34,42,45));
             // preparacion de la busqueda
             searchButton.addActionListener(e -> {
-
+                globalSearch = false;
                 boolean oneHasText = false;
 
                 for(Field field : fields){
@@ -482,6 +484,7 @@ public class IndexSearchUserInterface {
                     "\nPersonaje: " + doc.getCharacter();
 
             JTextArea resultTextArea = new JTextArea(resultText);
+            resultTextArea.setFont(new Font("Arial", Font.ITALIC, 12));
             resultTextArea.setBorder(BorderFactory.createEtchedBorder() );
             resultTextArea.setEditable(false);
             resultTextArea.setLineWrap(true);
@@ -519,7 +522,7 @@ public class IndexSearchUserInterface {
                 "\nRelease date: " + doc.getRelease_date() +
                 "\nSeason: " + doc.getSeason();
         detailsTextArea.setText(detailsText);
-
+        
         detailsPanel.add(new JScrollPane(detailsTextArea), BorderLayout.CENTER);
 
         JButton closeButton = new JButton("Close");
