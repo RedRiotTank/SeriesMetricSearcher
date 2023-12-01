@@ -5,7 +5,6 @@ import indexsearcher.MetricDoc;
 import indexsearcher.SearchOption;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.store.FSDirectory;
 
 import javax.swing.*;
@@ -99,6 +98,7 @@ public class IndexSearchUserInterface {
             return false;
         }
     }
+
 
     private void initializeUI() { // inicializa la interfaz grafica (fields search & global search)
         try{
@@ -256,7 +256,7 @@ public class IndexSearchUserInterface {
                     if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
                         oneHasText = true;
                         try {
-                            indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()));
+                            indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()), field.getValueMustOrShould());
                         } catch (IOException | ParseException | java.text.ParseException ex) {
                             throw new RuntimeException(ex);
                         }
@@ -273,7 +273,7 @@ public class IndexSearchUserInterface {
 
                         String[] bounds = {fromZero, toZero};
                         try {
-                            indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected());
+                            indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected(), field.getValueMustOrShould());
                         } catch (IOException | ParseException | java.text.ParseException ex) {
                             throw new RuntimeException(ex);
                         }
@@ -325,7 +325,7 @@ public class IndexSearchUserInterface {
             //globalSearchFrame.dispose(); // cierra la ventana
         }else{
             try{
-                results = indexSearch.search(BooleanClause.Occur.MUST);
+                results = indexSearch.search();
             }catch (NumberFormatException e){
                 System.err.println("Sintax error");
                 results = null;

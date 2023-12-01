@@ -29,7 +29,7 @@ public class IndexSearch {
     private final IndexReader reader;
     private final IndexSearcher searcher;
 
-    private final Vector<Query> querieList = new Vector<>();
+    private final Vector<QueryData> querieList = new Vector<>();
     private Query q = null;
 
     private int maxResults = 50;
@@ -41,60 +41,13 @@ public class IndexSearch {
         System.out.println("IndexSearcher created");
     }
 
-    public void addQuery(String queryString, SearchOption so) throws IOException, ParseException, java.text.ParseException {
+    public void addQuery(String queryString, SearchOption so, BooleanClause.Occur occur) throws IOException, ParseException, java.text.ParseException {
         String[] query = {queryString, ""};
-        this.addQuery(query, so, false, false);
+        this.addQuery(query, so, false, false, occur);
     }
-
-
-
-
-    private void addQueryNumber(String[] queryString, SearchOption so, boolean includelower, boolean includeupper){
-        String from = queryString[0].replaceAll(" ", "");
-        String to = queryString[1].replaceAll(" ", "");
-
-        /*
-        if(so.getField().equals("imdb_rating")) {
-
-            if(from.contains(".")){
-                from = from.replaceAll("\\.", "");
-            } else {
-                from = from + "0";
-            }
-
-            if(to.contains(".")){
-                to = to.replaceAll("\\.", "");
-            } else {
-                to = to + "0";
-            }
-        }
-        */
-
-
-
-        querieList.add(IntPoint.newRangeQuery(so.getField(),Integer.parseInt(from), Integer.parseInt(to)));
-    }
-
-    private void addQueryDate(String[] queryString, SearchOption so, boolean includelower, boolean includeupper) throws java.text.ParseException {
-        String from = queryString[0].replaceAll(" ", "").replaceAll("/", "-");
-        String to = queryString[1].replaceAll(" ", "");
-
-        from = setZeros(from);
-        to = setZeros(to);
-
-        if(from.length() != 8 || to.length() != 8) querieList.add(null);
-
-
-        String fromstring = Long.toString(dateformat.parse(from).getTime());
-        String tostring = Long.toString(dateformat.parse(to).getTime());
-
-        querieList.add(TermRangeQuery.newStringRange(so.getField(),fromstring,tostring,includelower,includeupper));
-    }
-
-
 
     // si retorna null es fallo, si retorna arraylist vacio es que no hay resultados.
-    public void addQuery(String[] queryString, SearchOption so, boolean includelower, boolean includeupper) throws IOException, ParseException, java.text.ParseException {
+    public void addQuery(String[] queryString, SearchOption so, boolean includelower, boolean includeupper, BooleanClause.Occur occur) throws IOException, ParseException, java.text.ParseException {
         QueryParser parser = new QueryParser(so.getField(), so.getAnalyzer());
 
 
@@ -112,7 +65,7 @@ public class IndexSearch {
                 if(!includelower) fromint++;
                 if(!includeupper) toint--;
 
-                querieList.add(IntPoint.newRangeQuery(so.getField(),fromint, toint));
+                querieList.add(new QueryData(IntPoint.newRangeQuery(so.getField(),fromint, toint),occur));
                 break;
 
             case "imdb_rating":
@@ -122,7 +75,7 @@ public class IndexSearch {
                 if(!includelower) fromfloat+=0.1;
                 if(!includeupper) tofloat-=0.1;
 
-                querieList.add(FloatPoint.newRangeQuery(so.getField(),fromfloat, tofloat));
+                querieList.add(new QueryData(FloatPoint.newRangeQuery(so.getField(),fromfloat, tofloat), occur));
                 break;
 
             case "release_date":
@@ -138,29 +91,26 @@ public class IndexSearch {
                 long fromlong = fromdate.getTime(),
                         tolong = todate.getTime();
 
-                querieList.add(LongPoint.newRangeQuery(so.getField(),fromlong, tolong));
+                querieList.add(new QueryData(LongPoint.newRangeQuery(so.getField(),fromlong, tolong), occur));
                 break;
 
             default:
-                querieList.add(parser.parse(queryString[0]));
+                querieList.add(new QueryData(parser.parse(queryString[0]), occur));
                 break;
-
         }
-
-
     }
 
-    private void booleanQuery( BooleanClause.Occur occur) {
+    public ArrayList<MetricDoc> search() throws IOException {
+
         BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
-        for (Query query : this.querieList) {
-            queryBuilder.add(query, occur);
-        }
-        q = queryBuilder.build();
-    }
 
-    public ArrayList<MetricDoc> search(BooleanClause.Occur occur) throws IOException {
-        booleanQuery(occur);
+        for (QueryData queryData : this.querieList)
+            queryBuilder.add(queryData.getQuery(), queryData.getOccur());
+
+        q = queryBuilder.build();
+
         if(q == null) return null;
+
         TopDocs topDocs = searcher.search(q, maxResults);
         this.q = null;
         this.querieList.clear();
@@ -185,18 +135,6 @@ public class IndexSearch {
 
     }
 
-    private String setZeros(String date){
-        String[] dateparts = date.split("-");
-
-       for(int i=0; i<3; i++){
-           if(dateparts[i].length() == 1){
-               dateparts[i] = "0" + dateparts[i];
-           }
-       }
-
-
-        return dateparts[0] + "-" + dateparts[1] + "-" + dateparts[2];
-    }
     private ArrayList<MetricDoc> generateMetricDocList( TopDocs topDocs) throws IOException {
         ArrayList<MetricDoc> metricDocList = new ArrayList<>();
 

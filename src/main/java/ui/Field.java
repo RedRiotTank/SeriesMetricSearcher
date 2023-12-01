@@ -63,18 +63,18 @@ public class Field {
         return andOrComboBox;
     }
 
-    public String getValueMustOrShould(){
+    public BooleanClause.Occur getValueMustOrShould(){
         if(mustOrShouldComboBox.getSelectedIndex() == 0)
-            return "must";
+            return BooleanClause.Occur.MUST;
         else
-            return "should";
+            return BooleanClause.Occur.SHOULD;
     }
 
-    public String getValueAndOrCombo(){
+    public BooleanClause.Occur getValueAndOrCombo(){
         if(andOrComboBox.getSelectedIndex() == 0)
-            return "and";
+            return BooleanClause.Occur.MUST;
         else
-            return "or";
+            return BooleanClause.Occur.SHOULD;
     }
 
 }
