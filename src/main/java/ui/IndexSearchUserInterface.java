@@ -19,19 +19,20 @@ import java.util.Vector;
 import java.util.List;
 
 public class IndexSearchUserInterface {
-    private final JButton facetsButton = new JButton("Facets");
+    // TODO: revisar variables y hacer locales las que hagan falta
     private JTextField globalSearchTextField; // campo para busqueda global
     private IndexSearch indexSearch;
     private ArrayList<MetricDoc> results;
-    private JFrame frame;
-    private final JButton globalSearchButton = new JButton("Global Search");
-    private final JButton searchButton = new JButton("Search");
+    private JFrame fieldsSearchframe;
+    private JFrame globalSearchFrame;
+    private final JButton globalSearchButton = new JButton(" <-- Back to Global Search");
     private String indexPath;
-    private Vector<Field> fields = generateFieldsInfo();
+    private final Vector<Field> fields = generateFieldsInfo();
 
     private int currentPage = 1;
     private final int resultsPerPage = 10;
 
+    private boolean globalSearch = false;
     private JDialog resultsDialog;
 
     public IndexSearchUserInterface(){
@@ -99,158 +100,18 @@ public class IndexSearchUserInterface {
         }
     }
 
-
     private void initializeUI() { // inicializa la interfaz grafica (fields search & global search)
         try{
             initializeIndexSearch();
         }catch (IOException e){
             e.printStackTrace();
         }
+        IndexSearchUserInterface mainWindow = IndexSearchUserInterface.this;
 
-        frame = new JFrame("Index Search");
-        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-
-        JPanel mainPanel = new JPanel(new GridLayout(0, 4));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JPanel titleAndSearchPanel = new JPanel(new BorderLayout()); // panel aux
-
-        JLabel titleLabel = new JLabel("Fields Search");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
-        titleAndSearchPanel.add(titleLabel, BorderLayout.NORTH);
-
-        globalSearchButton.addActionListener(e -> createGlobalSearchWindow(IndexSearchUserInterface.this));
-
-        mainPanel.add(titleAndSearchPanel);
-        mainPanel.add(new JLabel());
-
-        facetsButton.addActionListener(e ->{
-            createFacetsWindow(); // metodo para crear la ventana de las facetas
-        });
-        mainPanel.add(facetsButton);
-        mainPanel.add(new JLabel());
-
-        for(Field field : fields) {
-            JLabel label = new JLabel(field.getText() + ":");
-            label.setFont(new Font("Arial", Font.BOLD, 13));
-
-            //---- pintando
-            mainPanel.add(label);
-            if(!field.hasBounds)
-                mainPanel.add(field.getTextField());
-            else {
-                mainPanel.add(new JLabel());
-            }
-
-            mainPanel.add(field.getAndOrComboBox());
-            mainPanel.add(field.getMustOrShouldComboBox());
-
-            if(field.hasBounds){
-                JLabel from = new JLabel("From:");
-                from.setHorizontalAlignment(JLabel.RIGHT);
-                JLabel to = new JLabel("To:");
-                to.setHorizontalAlignment(JLabel.RIGHT);
-
-                mainPanel.add(from);
-
-                mainPanel.add(field.getFrom());
-                mainPanel.add(field.getFromInclusive());
-                mainPanel.add(new JLabel());
-
-                mainPanel.add(to);
-                mainPanel.add(field.getTo());
-                mainPanel.add(field.getToInclusive());
-                mainPanel.add(new JLabel());
-            }
-        }
-
-        // preparacion de la busqueda
-        searchButton.addActionListener(e -> {
-
-            boolean oneHasText = false;
-
-            for(Field field : fields){
-                // para acceder a los combos (MUST/SHOULD) y (AND/OR)
-                System.out.println(field.getValueMustOrShould());
-                System.out.println(field.getValueAndOrCombo());
-                if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
-                    oneHasText = true;
-                    try {
-                        indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()));
-                    } catch (IOException | ParseException | java.text.ParseException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                } else if (!field.getFrom().getText().isEmpty() && !field.getTo().getText().isEmpty()) {
-                    oneHasText = true;
-
-                    String fromZero = field.getFrom().getText(),
-                            toZero = field.getTo().getText();
-
-                    if(field.getFrom().getText().length() == 1) fromZero = "00" + field.getFrom().getText();
-                    if(field.getTo().getText().length() == 1) toZero = "00" + field.getTo().getText();
-                    if(field.getFrom().getText().length() == 2) fromZero = "0" + field.getFrom().getText();
-                    if(field.getTo().getText().length() == 2) toZero = "0" + field.getTo().getText();
-
-                    String[] bounds = {fromZero, toZero};
-                    try {
-                        indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected());
-                    } catch (IOException | ParseException | java.text.ParseException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            }
-
-            if(oneHasText){ // si hay al menos un campo relleno hace la búsqueda
-                try {
-                    search(false);
-                } catch (IOException | ParseException | java.text.ParseException ex) {
-                    throw new RuntimeException(ex);
-                }
-
-                for (Field field : fields) {
-                    field.getTextField().setText("");
-                    field.getTo().setText("");
-                    field.getFrom().setText("");
-                }
-            } else{
-                JOptionPane.showMessageDialog(frame, "Debes rellenar al menos un campo", "Advertencia", JOptionPane.WARNING_MESSAGE);
-                System.out.println("No hay ningún campo relleno");
-            }
-
-        });
-
-        mainPanel.add(new JLabel());
-        mainPanel.add(new JLabel());
-        mainPanel.add(globalSearchButton);
-        mainPanel.add(searchButton);
-
-        // para cerrar el índice cuando se cierre la ventana principal (fields search)
-        frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                closeIndex();
-                System.exit(0);
-            }
-        });
-
-        System.out.println(indexPath);
-        frame.getContentPane().add(mainPanel);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
-    }
-
-    public void showMainWindow() {
-        frame.setVisible(true);
-    }
-
-    private void createGlobalSearchWindow(IndexSearchUserInterface mainWindow) {
-        frame.setVisible(false);
-        JFrame globalSearchFrame = new JFrame("Global Search");
+        globalSearchFrame = new JFrame("Global Search");
         globalSearchFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        JPanel globalSearchPanel = new JPanel(new GridLayout(3, 1));
+        JPanel globalSearchPanel = new JPanel(new GridLayout(2, 1));
         globalSearchPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JLabel titleLabel = new JLabel("Global Search");
@@ -258,64 +119,202 @@ public class IndexSearchUserInterface {
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
 
         globalSearchTextField = new JTextField(20);
-        JButton globalSearchButton = new JButton("Global Search");
+        JButton globalSearchButton = new JButton("Search");
+        globalSearchButton.setBackground(new Color(51,239,100));
+        globalSearchButton.setForeground(new Color(34,42,45));
 
         globalSearchButton.addActionListener(e -> {
+            globalSearch = true; // param para usarlo en el showMainWindow
+            if(!globalSearchTextField.getText().isEmpty()){
+                String globalQuery = globalSearchTextField.getText();
+                System.out.println("Global Search Term: " + globalQuery);
+                try {
+                    search(true);
+                } catch (IOException | ParseException | java.text.ParseException ex) {
+                    throw new RuntimeException(ex);
+                }
 
-            String globalQuery = globalSearchTextField.getText();
-            System.out.println("Global Search Term: " + globalQuery);
-            try {
-                search(true);
-            } catch (IOException | ParseException | java.text.ParseException ex) {
-                throw new RuntimeException(ex);
+            } else{
+                JOptionPane.showMessageDialog(globalSearchFrame, "Must search something", "Global search error", JOptionPane.WARNING_MESSAGE);
             }
-            // TODO: cerrar la ventana de globalSearch al buscar (probarlo con el indice bueno)
-            globalSearchFrame.dispose(); // cierra la ventana
 
         });
 
-        JButton backButton = new JButton("Back to Fields Search");
-        backButton.addActionListener(e -> {
-            globalSearchFrame.dispose(); // cierra la ventana
-            mainWindow.showMainWindow(); // muestra la ventana principal
+        JButton fieldSearchButton = new JButton("Fields Search -->");
+        fieldSearchButton.setBackground(new Color(249,162,86));
+        fieldSearchButton.setForeground(new Color(34,42,45));
+
+        fieldSearchButton.addActionListener(e -> {
+            createFieldsSearchWindow();
+            globalSearchFrame.setVisible(false); // cierra la ventana
         });
 
         globalSearchPanel.add(titleLabel);
         globalSearchPanel.add(globalSearchTextField);
+        globalSearchPanel.add(fieldSearchButton);
         globalSearchPanel.add(globalSearchButton);
-        globalSearchPanel.add(backButton);
 
         globalSearchFrame.getContentPane().add(globalSearchPanel);
         globalSearchFrame.pack();
-        globalSearchFrame.setLocationRelativeTo(mainWindow.frame);
+        globalSearchFrame.setLocationRelativeTo(mainWindow.fieldsSearchframe);
         globalSearchFrame.setVisible(true);
-    }
 
-    private void createFacetsWindow(){ // TODO: añadir funcionalidad real
-        JFrame facetsFrame = new JFrame("Facets View");
-        facetsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        JPanel facetsPanel = new JPanel(new GridLayout(0,3));
 
-        JButton backButton = new JButton("Back");
-        backButton.addActionListener(e1 -> {
-            facetsFrame.dispose(); // se cierra
-            showMainWindow(); // se abre la principal
+        // para cerrar el índice cuando se cierre la ventana principal (fields search)
+        globalSearchFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                closeIndex();
+                System.exit(0);
+            }
         });
-
-        for(int i = 0; i < 14; i++) // TODO: (apaño visual) cambiar este for por el que muestre las facetas
-            facetsPanel.add(new JLabel());
-        facetsPanel.add(backButton);
-
-
-        facetsFrame.getContentPane().add(facetsPanel);
-        facetsFrame.pack();
-        facetsFrame.setSize(1100, 550); // tam ventana resultados
-        facetsFrame.setLocationRelativeTo(frame);
-        facetsFrame.setVisible(true);
     }
+
+    public void showMainWindow(boolean global) {
+        if(global)
+            globalSearchFrame.setVisible(true);
+        else
+            fieldsSearchframe.setVisible(true);
+    }
+
+    private void createFieldsSearchWindow() {
+        if(fieldsSearchframe==null){ // solo se crea si es null
+            System.out.println("Se crea la ventana de fields search");
+            fieldsSearchframe = new JFrame("Fields Search");
+            fieldsSearchframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+            JPanel mainPanel = new JPanel(new GridLayout(0, 4));
+            mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+            JPanel titleAndSearchPanel = new JPanel(new BorderLayout()); // panel aux
+
+            JLabel titleLabel = new JLabel("Fields Search");
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            titleLabel.setHorizontalAlignment(JLabel.CENTER);
+            titleLabel.setBorder(BorderFactory.createEmptyBorder());
+            titleAndSearchPanel.add(titleLabel, BorderLayout.NORTH);
+
+
+            globalSearchButton.setBackground(new Color(249,162,86));
+            globalSearchButton.setForeground(new Color(34,42,45));
+            globalSearchButton.addActionListener(e ->{
+                fieldsSearchframe.setVisible(false);
+                globalSearchFrame.setVisible(true);
+            });
+
+            mainPanel.add(new JLabel());
+            mainPanel.add(titleAndSearchPanel);
+
+            mainPanel.add(new JLabel());
+            mainPanel.add(new JLabel());
+
+            for(Field field : fields) {
+                JLabel label = new JLabel(field.getText() + ":");
+                label.setFont(new Font("Arial", Font.BOLD, 13));
+
+                //---- pintando
+                mainPanel.add(label);
+                if(!field.hasBounds)
+                    mainPanel.add(field.getTextField());
+                else {
+                    mainPanel.add(new JLabel());
+                }
+
+                mainPanel.add(field.getAndOrComboBox());
+                mainPanel.add(field.getMustOrShouldComboBox());
+
+                if(field.hasBounds){
+                    JLabel from = new JLabel("From:");
+                    from.setHorizontalAlignment(JLabel.RIGHT);
+                    JLabel to = new JLabel("To:");
+                    to.setHorizontalAlignment(JLabel.RIGHT);
+
+                    mainPanel.add(from);
+
+                    mainPanel.add(field.getFrom());
+                    mainPanel.add(field.getFromInclusive());
+                    mainPanel.add(new JLabel());
+
+                    mainPanel.add(to);
+                    mainPanel.add(field.getTo());
+                    mainPanel.add(field.getToInclusive());
+                    mainPanel.add(new JLabel());
+                }
+            }
+            JButton searchButton = new JButton("Search");
+            searchButton.setBackground(new Color(51,239,100));
+            searchButton.setForeground(new Color(34,42,45));
+            // preparacion de la busqueda
+            searchButton.addActionListener(e -> {
+
+                boolean oneHasText = false;
+
+                for(Field field : fields){
+                    // para acceder a los combos (MUST/SHOULD) y (AND/OR)
+                    System.out.println(field.getValueMustOrShould());
+                    System.out.println(field.getValueAndOrCombo());
+                    if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
+                        oneHasText = true;
+                        try {
+                            indexSearch.addQuery(field.getTextField().getText(), getSearchOptionByField(field.getText()));
+                        } catch (IOException | ParseException | java.text.ParseException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    } else if (!field.getFrom().getText().isEmpty() && !field.getTo().getText().isEmpty()) {
+                        oneHasText = true;
+
+                        String fromZero = field.getFrom().getText(),
+                                toZero = field.getTo().getText();
+
+                        if(field.getFrom().getText().length() == 1) fromZero = "00" + field.getFrom().getText();
+                        if(field.getTo().getText().length() == 1) toZero = "00" + field.getTo().getText();
+                        if(field.getFrom().getText().length() == 2) fromZero = "0" + field.getFrom().getText();
+                        if(field.getTo().getText().length() == 2) toZero = "0" + field.getTo().getText();
+
+                        String[] bounds = {fromZero, toZero};
+                        try {
+                            indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected());
+                        } catch (IOException | ParseException | java.text.ParseException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                }
+
+                if(oneHasText){ // si hay al menos un campo relleno hace la búsqueda
+                    try {
+                        search(false);
+                    } catch (IOException | ParseException | java.text.ParseException ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+                    for (Field field : fields) {
+                        field.getTextField().setText("");
+                        field.getTo().setText("");
+                        field.getFrom().setText("");
+                    }
+                } else{
+                    JOptionPane.showMessageDialog(fieldsSearchframe, "You must fill in at least one field", "Warning", JOptionPane.WARNING_MESSAGE);
+                    System.out.println("No hay ningún campo relleno");
+                }
+
+            });
+
+            mainPanel.add(new JLabel());
+            mainPanel.add(globalSearchButton);
+            mainPanel.add(new JLabel());
+            mainPanel.add(searchButton);
+
+            System.out.println(indexPath);
+            fieldsSearchframe.getContentPane().add(mainPanel);
+            fieldsSearchframe.pack();
+            fieldsSearchframe.setLocationRelativeTo(null);
+        }
+        // se hace visible
+        fieldsSearchframe.setVisible(true);
+    }
+
     private void search(boolean global) throws IOException, ParseException, java.text.ParseException {
         if(global){
-            // TODO: busqeuda global
             String queryGlobal = globalSearchTextField.getText();
             try{
                 results = indexSearch.allFieldsSearch(queryGlobal);
@@ -323,6 +322,7 @@ public class IndexSearchUserInterface {
                 System.err.println("Sintax error");
                 results = null;
             }
+            //globalSearchFrame.dispose(); // cierra la ventana
         }else{
             try{
                 results = indexSearch.search(BooleanClause.Occur.MUST);
@@ -334,27 +334,29 @@ public class IndexSearchUserInterface {
         }
 
         currentPage = 1;
-
         createResultsWindow();
     }
 
     private void createResultsWindow() {
         // se cambia el frame por un dialog para poder actualizarlo en tiempo real
         if(resultsDialog == null){
-            resultsDialog = new JDialog(frame,"Query Results", true);
+            resultsDialog = new JDialog(fieldsSearchframe,"Query Results", true);
             resultsDialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
             resultsDialog.setSize(1100,550);
-            resultsDialog.setLocationRelativeTo(frame);
+            resultsDialog.setLocationRelativeTo(fieldsSearchframe);
         }
         // si no hay resultados se muestra mensaje de error o si es null error por sintaxis
-        if(results == null){
+        if(results == null){ // TODO: revisar, no funciona bien
             JOptionPane.showMessageDialog(resultsDialog, "Sintax error in query", "Sintax error", JOptionPane.ERROR_MESSAGE);
             return;
         } else if(results.isEmpty()){
             JOptionPane.showMessageDialog(resultsDialog, "There are no results for this query", "Without results", JOptionPane.ERROR_MESSAGE);
             return;
         }
+
+        JPanel facetsPanel = createFacetsPanel();
+        facetsPanel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
 
         JPanel resultsPanel = new JPanel(new BorderLayout());
         resultsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -383,7 +385,7 @@ public class IndexSearchUserInterface {
         JButton newSearchButton = new JButton("New query");
         newSearchButton.addActionListener(e -> {
             resultsDialog.dispose(); // se cierra
-            showMainWindow(); // se abre la principal
+            showMainWindow(globalSearch); // se abre la principal
         });
 
         buttonsPanel.add(newSearchButton);
@@ -417,8 +419,47 @@ public class IndexSearchUserInterface {
         resultsPanel.add(buttonsPanel, BorderLayout.SOUTH);
 
         resultsDialog.getContentPane().removeAll();
-        resultsDialog.getContentPane().add(resultsPanel);
+
+        // crea un split para poder hacer dinamica la ventana segun gustemos
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, facetsPanel, resultsPanel);
+        splitPane.setResizeWeight(0.2);
+        resultsDialog.getContentPane().add(splitPane);
         resultsDialog.setVisible(true);
+    }
+
+    private JPanel createFacetsPanel() { // panel para las facetas (en resultsWindow)
+        JPanel facetsPanel = new JPanel(new BorderLayout());
+
+        JLabel titleLabel = new JLabel("Facets");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(JLabel.CENTER);
+
+        String[] elementos = {"Eleccion1","Eleccion2"};
+        JComboBox<String> faceta1 = new JComboBox<>(elementos);
+        JComboBox<String> faceta2 = new JComboBox<>(elementos);
+        JComboBox<String> faceta3 = new JComboBox<>(elementos);
+
+        JPanel innerPanel = new JPanel(new GridLayout(0, 1));
+        innerPanel.add(titleLabel); // titulo
+        // se añaden las facetas
+        innerPanel.add(new JLabel("Faceta 1"));
+        innerPanel.add(faceta1);
+        innerPanel.add(new JLabel());
+        innerPanel.add(new JLabel("Faceta 2"));
+        innerPanel.add(faceta2);
+        innerPanel.add(new JLabel());
+        innerPanel.add(new JLabel("Faceta 3"));
+        innerPanel.add(faceta3);
+        innerPanel.add(new JLabel());
+
+        JButton filterResultsButton = new JButton("Filter");
+        filterResultsButton.setBackground(new Color(51,239,100));
+        filterResultsButton.setForeground(new Color(34,42,45));
+
+        innerPanel.add(filterResultsButton);
+        facetsPanel.add(innerPanel, BorderLayout.CENTER);
+
+        return facetsPanel;
     }
 
     // método para controlar que no hay mas resultados en la busqueda y saltar excepcion
@@ -491,7 +532,7 @@ public class IndexSearchUserInterface {
 
         detailsDialog.getContentPane().add(detailsPanel);
         detailsDialog.pack();
-        detailsDialog.setSize(400, 200);
+        detailsDialog.setSize(400, 350);
         detailsDialog.setLocationRelativeTo(null);
         detailsDialog.setVisible(true);
     }
@@ -499,12 +540,14 @@ public class IndexSearchUserInterface {
 
     private void initializeIndexSearch() throws IOException {
         indexSearch = new IndexSearch(indexPath);
+        System.out.println("Indice abierto");
     }
 
     private void closeIndex() {
         try {
             if (indexSearch != null) {
                 indexSearch.closeIndex();
+                System.out.println("Indice cerrado");
             }
         } catch (IOException e) {
             e.printStackTrace();
