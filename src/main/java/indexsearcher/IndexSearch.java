@@ -1,7 +1,5 @@
 package indexsearcher;
 
-import customanalyzers.EnHunspellAnalyzer;
-import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -15,21 +13,20 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Vector;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IndexSearch {
     private static final SimpleDateFormat dateformat = new SimpleDateFormat("dd-MM-yy");
     private final IndexReader reader;
     private final IndexSearcher searcher;
 
-    private final Vector<QueryData> querieList = new Vector<>();
-    private Query q = null;
+    private final Vector<QueryData> querieListEpisode = new Vector<>();
+    private final Vector<QueryData> querieListDialog = new Vector<>();
+    private Query queryEpisode = null;
+    private Query queryDialog = null;
 
-    private int maxResults = 50;
+    private int maxResults = 100;
 
     public IndexSearch(String indexDir) throws IOException {
         Directory directory = FSDirectory.open(Paths.get(indexDir));
@@ -62,7 +59,7 @@ public class IndexSearch {
                 if(!includelower) fromint++;
                 if(!includeupper) toint--;
 
-                querieList.add(new QueryData(IntPoint.newRangeQuery(so.getField(),fromint, toint),occur));
+                querieListEpisode.add(new QueryData(IntPoint.newRangeQuery(so.getField(),fromint, toint),occur));
                 break;
 
             case "imdb_rating":
@@ -72,7 +69,7 @@ public class IndexSearch {
                 if(!includelower) fromfloat+=0.1;
                 if(!includeupper) tofloat-=0.1;
 
-                querieList.add(new QueryData(FloatPoint.newRangeQuery(so.getField(),fromfloat, tofloat), occur));
+                querieListEpisode.add(new QueryData(FloatPoint.newRangeQuery(so.getField(),fromfloat, tofloat), occur));
                 break;
 
             case "release_date":
@@ -88,29 +85,73 @@ public class IndexSearch {
                 long fromlong = fromdate.getTime(),
                         tolong = todate.getTime();
 
-                querieList.add(new QueryData(LongPoint.newRangeQuery(so.getField(),fromlong, tolong), occur));
+                querieListEpisode.add(new QueryData(LongPoint.newRangeQuery(so.getField(),fromlong, tolong), occur));
+                break;
+
+            case "spoken_words":
+            case "characters_list":
+                querieListEpisode.add(new QueryData(parser.parse(queryString[0]), occur));
+                break;
+            case "spoken_words_dialog":
+            case "character":
+            case "location":
+                querieListDialog.add(new QueryData(parser.parse(queryString[0]), occur));
                 break;
 
             default:
-                querieList.add(new QueryData(parser.parse(queryString[0]), occur));
+                querieListEpisode.add(new QueryData(parser.parse(queryString[0]), occur));
                 break;
         }
     }
 
     public ArrayList<MetricDoc> search() throws IOException, ParseException, java.text.ParseException {
 
-        BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+        BooleanQuery.Builder queryBuilderEpisode = new BooleanQuery.Builder();
+        BooleanQuery.Builder queryBuilderDialog = new BooleanQuery.Builder();
 
-        for (QueryData queryData : this.querieList)
-            queryBuilder.add(queryData.getQuery(), queryData.getOccur());
+        boolean qEpisode = this.querieListEpisode.size() > 0;
+        boolean qDialog = this.querieListDialog.size() > 0;
 
-        q = queryBuilder.build();
+        for (QueryData queryData : this.querieListEpisode)
+            queryBuilderEpisode.add(queryData.getQuery(), queryData.getOccur());
 
-        if(q == null) return null;
+        for (QueryData queryData : this.querieListDialog)
+            queryBuilderDialog.add(queryData.getQuery(), queryData.getOccur());
 
-        TopDocs topDocs = searcher.search(q, maxResults);
-        this.q = null;
-        this.querieList.clear();
+        queryEpisode = queryBuilderEpisode.build();
+        queryDialog = queryBuilderDialog.build();
+
+        if(queryEpisode == null && queryDialog == null) return null;
+
+        TopDocs topDocsEpisode = searcher.search(queryEpisode, maxResults);
+        TopDocs topDocsDialog = searcher.search(queryDialog, maxResults);
+
+        ArrayList<Document> topDocs = new ArrayList<>();
+
+
+        if(qEpisode && !qDialog)
+            for(ScoreDoc episodedoc : topDocsEpisode.scoreDocs)
+                topDocs.add(searcher.doc(episodedoc.doc));
+
+        if(!qEpisode && qDialog)
+            for(ScoreDoc dialogdoc : topDocsDialog.scoreDocs)
+                topDocs.add(searcher.doc(dialogdoc.doc));
+
+        if(qEpisode && qDialog)
+            for(ScoreDoc dialogdoc : topDocsDialog.scoreDocs) {
+                for(ScoreDoc episodedoc : topDocsEpisode.scoreDocs) {
+                    Document ddoc = searcher.doc(dialogdoc.doc);
+                    Document edoc = searcher.doc(episodedoc.doc);
+
+                    if(ddoc.get("episode_number_stored").equals(edoc.get("episode_number_stored"))) {
+                        topDocs.add(searcher.doc(dialogdoc.doc));
+                    }
+                }
+            }
+
+        this.queryEpisode = null;
+        this.querieListEpisode.clear();
+        this.querieListDialog.clear();
 
         return generateMetricDocList(topDocs);
     }
@@ -124,16 +165,16 @@ public class IndexSearch {
 
         BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
 
-        for (QueryData queryData : this.querieList)
+        for (QueryData queryData : this.querieListEpisode)
             queryBuilder.add(queryData.getQuery(), queryData.getOccur());
 
-        q = queryBuilder.build();
+        queryEpisode = queryBuilder.build();
 
-        if(q == null) return null;
+        if(queryEpisode == null) return null;
 
-        TopDocs topDocs = searcher.search(q, maxResults);
-        this.q = null;
-        this.querieList.clear();
+        TopDocs topDocs = searcher.search(queryEpisode, maxResults);
+        this.queryEpisode = null;
+        this.querieListEpisode.clear();
 
         return searcher.doc(topDocs.scoreDocs[0].doc);
     }
@@ -151,15 +192,16 @@ public class IndexSearch {
 
         TopDocs topDocs = searcher.search(allq, maxResults);
 
-        return generateMetricDocList(topDocs);
+        //return generateMetricDocList(topDocs);
+        return null;
 
     }
 
-    private ArrayList<MetricDoc> generateMetricDocList( TopDocs topDocs) throws IOException, ParseException, java.text.ParseException {
+    private ArrayList<MetricDoc> generateMetricDocList( ArrayList<Document> topDocs) throws IOException, ParseException, java.text.ParseException {
         ArrayList<MetricDoc> metricDocList = new ArrayList<>();
 
-        for (ScoreDoc doc : topDocs.scoreDocs)
-            metricDocList.add(new MetricDoc(searcher.doc(doc.doc)));
+        for (Document doc : topDocs)
+            metricDocList.add(new MetricDoc(doc));
 
         return metricDocList;
     }

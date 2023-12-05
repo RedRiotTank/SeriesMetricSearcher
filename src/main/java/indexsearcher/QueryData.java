@@ -6,6 +6,7 @@ import org.apache.lucene.search.Query;
 public class QueryData {
     private Query query;
     private BooleanClause.Occur occur;
+    private String doc_type;
 
 
     QueryData(Query query, BooleanClause.Occur occur){
