@@ -268,11 +268,6 @@ public class IndexSearchUserInterface {
                         String fromZero = field.getFrom().getText(),
                                 toZero = field.getTo().getText();
 
-                        if(field.getFrom().getText().length() == 1) fromZero = "00" + field.getFrom().getText();
-                        if(field.getTo().getText().length() == 1) toZero = "00" + field.getTo().getText();
-                        if(field.getFrom().getText().length() == 2) fromZero = "0" + field.getFrom().getText();
-                        if(field.getTo().getText().length() == 2) toZero = "0" + field.getTo().getText();
-
                         String[] bounds = {fromZero, toZero};
                         try {
                             indexSearch.addQuery(bounds, getSearchOptionByField(field.getText()), field.getFromInclusive().isSelected(), field.getToInclusive().isSelected(), field.getValueMustOrShould());
@@ -516,7 +511,8 @@ public class IndexSearchUserInterface {
         String detailsText = "Title: " + doc.getTitle() +
                 "\nNº de Episodio: " + doc.getEpisode_number() +
                 "\nCharacter: " + doc.getCharacter() +
-                "\nDialog: " + doc.getSpoken_words() +
+                "\nDialog: " + doc.getSpoken_words_dialog() +
+                "\nSpoken_words: " + doc.getSpoken_words() +
                 "\nLocation: " + doc.getLocation() +
                 "\nRating IMDB: " + doc.getImdb_rating() +
                 "\nRelease date: " + doc.getRelease_date() +
@@ -559,6 +555,7 @@ public class IndexSearchUserInterface {
 
     private static SearchOption getSearchOptionByField(String field) {
         return switch (field) {
+            case "spoken_words_dialog" -> SearchOption.SPOKEN_WORDS_DIALOG;
             case "spoken_words" -> SearchOption.SPOKEN_WORDS;
             case "character" -> SearchOption.CHARACTER;
             case "location" -> SearchOption.LOCATION;
@@ -573,9 +570,10 @@ public class IndexSearchUserInterface {
 
     private static Vector<Field> generateFieldsInfo(){
         Vector<Field> fields = new Vector<>();
-        fields.add(new Field("spoken_words", false));
+        fields.add(new Field("spoken_words_dialog", false));
         fields.add(new Field( "character",false));
         fields.add(new Field( "location", false));
+        fields.add(new Field("spoken_words", false));
         fields.add(new Field( "title",false));
         fields.add(new Field( "episode_number", true));
         fields.add(new Field( "release_date", true));

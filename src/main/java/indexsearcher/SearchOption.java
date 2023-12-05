@@ -9,9 +9,10 @@ import java.io.IOException;
 import java.text.ParseException;
 
 public enum SearchOption {
+    DOC_TYPE("doc_type"),
     EPISODE_NUMBER("episode_number"),
     SPOKEN_WORDS("spoken_words"),
-   // SPOKEN_WORDS_DIALOG("spoken_wordsDialog"),
+    SPOKEN_WORDS_DIALOG("spoken_words_dialog"),
     CHARACTER("character"),
     CHARACTER_LIST("characters_list"),
     LOCATION("location"),
@@ -65,7 +66,7 @@ public enum SearchOption {
                 return standardAnalyzer;
 
             case "spoken_words":
-            case "spoken_wordsDialog":
+            case "spoken_words_dialog":
             case "title":
                 return enHunspellAnalyzer;
 

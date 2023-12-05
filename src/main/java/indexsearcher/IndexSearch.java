@@ -2,10 +2,7 @@ package indexsearcher;
 
 import customanalyzers.EnHunspellAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
-import org.apache.lucene.document.DoublePoint;
-import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -100,7 +97,7 @@ public class IndexSearch {
         }
     }
 
-    public ArrayList<MetricDoc> search() throws IOException {
+    public ArrayList<MetricDoc> search() throws IOException, ParseException, java.text.ParseException {
 
         BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
 
@@ -116,6 +113,29 @@ public class IndexSearch {
         this.querieList.clear();
 
         return generateMetricDocList(topDocs);
+    }
+
+    public Document getEpisodeDoc(String episode_number) throws IOException, ParseException, java.text.ParseException {
+
+        addQuery("episode", SearchOption.DOC_TYPE, BooleanClause.Occur.MUST);
+
+        String[] bounds = {episode_number, episode_number};
+        addQuery(bounds, SearchOption.EPISODE_NUMBER, true, true, BooleanClause.Occur.MUST);
+
+        BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
+
+        for (QueryData queryData : this.querieList)
+            queryBuilder.add(queryData.getQuery(), queryData.getOccur());
+
+        q = queryBuilder.build();
+
+        if(q == null) return null;
+
+        TopDocs topDocs = searcher.search(q, maxResults);
+        this.q = null;
+        this.querieList.clear();
+
+        return searcher.doc(topDocs.scoreDocs[0].doc);
     }
 
     public ArrayList<MetricDoc> allFieldsSearch(String queryString) throws IOException, ParseException, java.text.ParseException {
@@ -135,21 +155,13 @@ public class IndexSearch {
 
     }
 
-    private ArrayList<MetricDoc> generateMetricDocList( TopDocs topDocs) throws IOException {
+    private ArrayList<MetricDoc> generateMetricDocList( TopDocs topDocs) throws IOException, ParseException, java.text.ParseException {
         ArrayList<MetricDoc> metricDocList = new ArrayList<>();
 
         for (ScoreDoc doc : topDocs.scoreDocs)
             metricDocList.add(new MetricDoc(searcher.doc(doc.doc)));
 
         return metricDocList;
-    }
-
-    public void setMaxResults(int maxResults){
-        this.maxResults = maxResults;
-    }
-
-    public int getMaxResults(){
-        return maxResults;
     }
 
     public void closeIndex() throws IOException {

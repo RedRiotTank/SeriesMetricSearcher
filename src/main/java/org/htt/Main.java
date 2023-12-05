@@ -16,6 +16,9 @@ public class Main {
 
        IndexSearch indexSearch = new IndexSearch("E:\\dev\\SeriesMetricSearcher\\files\\index");
 
+       indexSearch.addQuery("halloween", SearchOption.SPOKEN_WORDS_DIALOG, BooleanClause.Occur.MUST);
+       ArrayList<MetricDoc> ff = indexSearch.search();
+
        //Ejemplo Nº de episodio
        String[] bounds = {"49", "50"};
        indexSearch.addQuery(bounds, SearchOption.EPISODE_NUMBER, false, true, BooleanClause.Occur.MUST);
