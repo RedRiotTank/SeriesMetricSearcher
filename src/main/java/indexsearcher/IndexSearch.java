@@ -192,11 +192,19 @@ public class IndexSearch {
 
         TopDocs topDocs = searcher.search(allq, maxResults);
 
-        //return generateMetricDocList(topDocs);
-        return null;
+        return generateMetricDocList(topDocs);
+
 
     }
 
+    private ArrayList<MetricDoc> generateMetricDocList( TopDocs topDocs) throws IOException, ParseException, java.text.ParseException {
+        ArrayList<MetricDoc> metricDocList = new ArrayList<>();
+
+        for (ScoreDoc doc : topDocs.scoreDocs)
+            metricDocList.add(new MetricDoc(searcher.doc(doc.doc)));
+
+        return metricDocList;
+    }
     private ArrayList<MetricDoc> generateMetricDocList( ArrayList<Document> topDocs) throws IOException, ParseException, java.text.ParseException {
         ArrayList<MetricDoc> metricDocList = new ArrayList<>();
 
