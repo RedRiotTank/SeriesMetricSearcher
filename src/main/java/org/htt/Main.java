@@ -1,20 +1,19 @@
 package org.htt;
 
+import indexsearcher.GlobalVals;
 import indexsearcher.IndexSearch;
 import indexsearcher.MetricDoc;
 import indexsearcher.SearchOption;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.BooleanClause;
-import ui.IndexSearchUserInterface;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) throws IOException, ParseException, java.text.ParseException {
 
-       IndexSearch indexSearch = new IndexSearch("E:\\dev\\SeriesMetricSearcher\\files\\index");
+       IndexSearch indexSearch = IndexSearch.getInstance(GlobalVals.getRutaIndex());
 
        indexSearch.addQuery("halloween", SearchOption.SPOKEN_WORDS_DIALOG, BooleanClause.Occur.MUST);
        ArrayList<MetricDoc> ff = indexSearch.search();

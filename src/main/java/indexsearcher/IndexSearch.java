@@ -19,8 +19,10 @@ import java.util.Vector;
 public class IndexSearch {
     private static final SimpleDateFormat dateformat = new SimpleDateFormat("dd-MM-yy");
     private final IndexReader reader;
+    // TODO: añadir un TaxonomyReader para abrir el indice de facetas y poder trabajar con estas
     private final IndexSearcher searcher;
 
+    private static IndexSearch instance;
     private final Vector<QueryData> querieListEpisode = new Vector<>();
     private final Vector<QueryData> querieListDialog = new Vector<>();
     private Query queryEpisode = null;
@@ -33,6 +35,18 @@ public class IndexSearch {
         reader = DirectoryReader.open(directory);
         searcher = new IndexSearcher(reader);
         System.out.println("IndexSearcher created");
+    }
+
+    // singleton para acceder siempre a la misma instancia
+    public static synchronized IndexSearch getInstance(String indexDir) throws IOException {
+        if (instance == null) {
+            instance = new IndexSearch(indexDir);
+        }
+        return instance;
+    }
+
+    public IndexSearcher getSearcher() {
+        return searcher;
     }
 
     public void addQuery(String queryString, SearchOption so, BooleanClause.Occur occur) throws IOException, ParseException, java.text.ParseException {

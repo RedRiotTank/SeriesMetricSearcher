@@ -2,13 +2,9 @@ package indexsearcher;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.ScoreDoc;
 
-import javax.print.Doc;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 
 public class MetricDoc {
@@ -28,7 +24,7 @@ public class MetricDoc {
     private String title = null;
     private String views = null;
 
-    IndexSearch indexSearch = new IndexSearch("E:\\dev\\SeriesMetricSearcher\\files\\index");
+    IndexSearch indexSearch = IndexSearch.getInstance(GlobalVals.getRutaIndex());
 
     public MetricDoc(Document doc) throws IOException, ParseException, java.text.ParseException {
 
@@ -68,11 +64,9 @@ public class MetricDoc {
             if(doc.get("location") != null)
                 this.location = doc.get("location");
              else
-                this.location = "";
+                 this.location = "";
 
             this.spoken_words_dialog = doc.get("spoken_words_dialog");
-
-            //-----
 
             this.spoken_words = episodedoc.get("spoken_words");
 
@@ -87,16 +81,8 @@ public class MetricDoc {
             this.title = episodedoc.get("title");
             this.views = episodedoc.get("episode_views");
             this.character_list = episodedoc.get("characters_list");
-
-
         }
-
-
-
-
     }
-
-
 
     public String getEpisode_number() {
         return episode_number;

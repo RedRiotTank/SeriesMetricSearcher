@@ -1,5 +1,6 @@
 package ui;
 
+import indexsearcher.GlobalVals;
 import indexsearcher.IndexSearch;
 import indexsearcher.MetricDoc;
 import indexsearcher.SearchOption;
@@ -8,8 +9,6 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.store.FSDirectory;
 
 import javax.swing.*;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -81,6 +80,8 @@ public class IndexSearchUserInterface {
                 indexPath = fileChooser.getSelectedFile().getAbsolutePath();
                 if (isLuceneIndex(indexPath)) {
                     validIndex = true;
+                    // set ruta para poder acceder desde otras clases
+                    GlobalVals.setRutaIndex(indexPath);
                     initializeUI();
                 } else {
                     JOptionPane.showMessageDialog(null, "La carpeta seleccionada no es un índice de Lucene válido.", "Error opening index...", JOptionPane.ERROR_MESSAGE);
@@ -301,7 +302,6 @@ public class IndexSearchUserInterface {
             mainPanel.add(new JLabel());
             mainPanel.add(searchButton);
 
-            System.out.println(indexPath);
             fieldsSearchframe.getContentPane().add(mainPanel);
             fieldsSearchframe.pack();
             fieldsSearchframe.setLocationRelativeTo(null);
