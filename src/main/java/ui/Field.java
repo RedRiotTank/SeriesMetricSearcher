@@ -13,7 +13,7 @@ public class Field {
     private JTextField from, to;
 
     private JRadioButton fromInclusive, toInclusive;
-    private JComboBox<String> mustOrShouldComboBox, andOrComboBox;
+    private JComboBox<String> mustOrShouldComboBox;
 
     public Field(String text, boolean hasBounds){
         this.text = text;
@@ -24,7 +24,6 @@ public class Field {
         fromInclusive = new JRadioButton("Included");
         toInclusive = new JRadioButton("Included");
         mustOrShouldComboBox = new JComboBox<>(new String[]{"MUST","SHOULD"});
-        andOrComboBox = new JComboBox<>(new String[]{"AND","OR"});
     }
 
     public String getText() {
@@ -59,19 +58,9 @@ public class Field {
         return mustOrShouldComboBox;
     }
 
-    public JComboBox<String> getAndOrComboBox() {
-        return andOrComboBox;
-    }
 
     public BooleanClause.Occur getValueMustOrShould(){
         if(mustOrShouldComboBox.getSelectedIndex() == 0)
-            return BooleanClause.Occur.MUST;
-        else
-            return BooleanClause.Occur.SHOULD;
-    }
-
-    public BooleanClause.Occur getValueAndOrCombo(){
-        if(andOrComboBox.getSelectedIndex() == 0)
             return BooleanClause.Occur.MUST;
         else
             return BooleanClause.Occur.SHOULD;

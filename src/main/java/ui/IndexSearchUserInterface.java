@@ -186,7 +186,7 @@ public class IndexSearchUserInterface {
             fieldsSearchframe = new JFrame("Fields Search");
             fieldsSearchframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-            JPanel mainPanel = new JPanel(new GridLayout(0, 4));
+            JPanel mainPanel = new JPanel(new GridLayout(0, 3));
             mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
             JPanel titleAndSearchPanel = new JPanel(new BorderLayout()); // panel aux
@@ -209,7 +209,6 @@ public class IndexSearchUserInterface {
             mainPanel.add(titleAndSearchPanel);
 
             mainPanel.add(new JLabel());
-            mainPanel.add(new JLabel());
 
             for(Field field : fields) {
                 JLabel label = new JLabel(field.getText() + ":");
@@ -223,7 +222,6 @@ public class IndexSearchUserInterface {
                     mainPanel.add(new JLabel());
                 }
 
-                mainPanel.add(field.getAndOrComboBox());
                 mainPanel.add(field.getMustOrShouldComboBox());
 
                 if(field.hasBounds){
@@ -236,12 +234,10 @@ public class IndexSearchUserInterface {
 
                     mainPanel.add(field.getFrom());
                     mainPanel.add(field.getFromInclusive());
-                    mainPanel.add(new JLabel());
 
                     mainPanel.add(to);
                     mainPanel.add(field.getTo());
                     mainPanel.add(field.getToInclusive());
-                    mainPanel.add(new JLabel());
                 }
             }
             JButton searchButton = new JButton("Search");
@@ -255,7 +251,6 @@ public class IndexSearchUserInterface {
                 for(Field field : fields){
                     // para acceder a los combos (MUST/SHOULD) y (AND/OR)
                     System.out.println(field.getValueMustOrShould());
-                    System.out.println(field.getValueAndOrCombo());
                     if(!field.hasBounds && !field.getTextField().getText().isEmpty()){
                         oneHasText = true;
                         try {
@@ -299,7 +294,6 @@ public class IndexSearchUserInterface {
 
             mainPanel.add(new JLabel());
             mainPanel.add(globalSearchButton);
-            mainPanel.add(new JLabel());
             mainPanel.add(searchButton);
 
             fieldsSearchframe.getContentPane().add(mainPanel);
