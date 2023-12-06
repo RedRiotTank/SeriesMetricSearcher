@@ -44,7 +44,6 @@ public class IndexSearch {
     public void addQuery(String[] queryString, SearchOption so, boolean includelower, boolean includeupper, BooleanClause.Occur occur) throws IOException, ParseException, java.text.ParseException {
         QueryParser parser = new QueryParser(so.getField(), so.getAnalyzer());
 
-
         String from = queryString[0].replaceAll(" ", "").replaceAll("[^0-9.]", "");
         String to = queryString[1].replaceAll(" ", "").replaceAll("[^0-9.]", "");
 
@@ -52,6 +51,8 @@ public class IndexSearch {
         switch (so.getField()){
 
             case "episode_number":
+                QueryParser parserDocType = new QueryParser(SearchOption.DOC_TYPE.getField(), SearchOption.DOC_TYPE.getAnalyzer());
+                querieListEpisode.add(new QueryData(parserDocType.parse("episode"), occur));
             case "season":
                 int fromint = Integer.parseInt(from),
                     toint = Integer.parseInt(to);
@@ -125,6 +126,17 @@ public class IndexSearch {
 
         TopDocs topDocsEpisode = searcher.search(queryEpisode, maxResults);
         TopDocs topDocsDialog = searcher.search(queryDialog, maxResults);
+
+        ArrayList<Document> topDocsEpisodearr = new ArrayList<>();
+        ArrayList<Document> topDocsDialogarr = new ArrayList<>();
+
+        for(ScoreDoc episodedoc : topDocsEpisode.scoreDocs)
+            topDocsEpisodearr.add(searcher.doc(episodedoc.doc));
+
+        for(ScoreDoc dialogdoc : topDocsDialog.scoreDocs)
+            topDocsDialogarr.add(searcher.doc(dialogdoc.doc));
+
+
 
         ArrayList<Document> topDocs = new ArrayList<>();
 
