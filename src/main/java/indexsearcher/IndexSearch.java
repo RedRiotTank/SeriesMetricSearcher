@@ -14,7 +14,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -194,21 +193,21 @@ public class IndexSearch {
         this.queryEpisode = null;
         this.querieListEpisode.clear();
         this.querieListDialog.clear();
-        // FACETAS
-        // TODO: reestrucutar una vez hecho
 
+
+        return generateMetricDocList(topDocs);
+    }
+
+    public SearchResult searchWithFacets() throws IOException, ParseException, java.text.ParseException {
+        ArrayList<MetricDoc> docs = search();
 
         Facets facetas = new FastTaxonomyFacetCounts(taxoReader, facetsConfig, facetsCollector);
         List<FacetResult> dims = facetas.getAllDims(100);
-        System.out.println("Categorias totales: " + dims.size());
-        for(FacetResult fr : dims){
-            System.out.println("Categoria: " + fr.dim);
-            for(LabelAndValue lv : fr.labelValues){
-                System.out.println("    Etiqueta: " + lv.label + " valor: " + lv.value);
-            }
-        }
-//        FacetResult facetResult = facetas.getTopChildren(10,"Character");
-        return generateMetricDocList(topDocs);
+
+        facetsCollector = new FacetsCollector();
+
+        return new SearchResult(docs,dims);
+
     }
 
     public Document getEpisodeDoc(String episode_number) throws IOException, ParseException, java.text.ParseException {

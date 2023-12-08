@@ -1,9 +1,8 @@
 package ui;
 
-import indexsearcher.GlobalVals;
-import indexsearcher.IndexSearch;
-import indexsearcher.MetricDoc;
-import indexsearcher.SearchOption;
+import indexsearcher.*;
+import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.store.FSDirectory;
@@ -13,9 +12,9 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Vector;
+import java.util.*;
 import java.util.List;
 
 public class IndexSearchUserInterface {
@@ -23,6 +22,7 @@ public class IndexSearchUserInterface {
     private JTextField globalSearchTextField; // campo para busqueda global
     private IndexSearch indexSearch;
     private ArrayList<MetricDoc> results;
+    private SearchResult resultsWithFacets;
     private JFrame fieldsSearchframe;
     private JFrame globalSearchFrame;
     private final JButton globalSearchButton = new JButton(" <-- Back to Global Search");
@@ -34,6 +34,7 @@ public class IndexSearchUserInterface {
 
     private boolean globalSearch = false;
     private JDialog resultsDialog;
+    private JPanel resultsGridPanel;
 
     public IndexSearchUserInterface(){
         showInitialWindow(); // muestra la ventana para ir a abrir el indice
@@ -316,7 +317,8 @@ public class IndexSearchUserInterface {
             //globalSearchFrame.dispose(); // cierra la ventana
         }else{
             try{
-                results = indexSearch.search();
+                resultsWithFacets = indexSearch.searchWithFacets();
+
             }catch (NumberFormatException e){
                 System.err.println("Sintax error");
                 results = null;
@@ -338,10 +340,10 @@ public class IndexSearchUserInterface {
             resultsDialog.setLocationRelativeTo(fieldsSearchframe);
         }
         // si no hay resultados se muestra mensaje de error o si es null error por sintaxis
-        if(results == null){ // TODO: revisar, no funciona bien
+        if(resultsWithFacets.getDocs() == null){ // TODO: revisar, no funciona bien
             JOptionPane.showMessageDialog(resultsDialog, "Sintax error in query", "Sintax error", JOptionPane.ERROR_MESSAGE);
             return;
-        } else if(results.isEmpty()){
+        } else if(resultsWithFacets.getDocs().isEmpty()){
             JOptionPane.showMessageDialog(resultsDialog, "There are no results for this query", "Without results", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -359,10 +361,10 @@ public class IndexSearchUserInterface {
 
         // variables para la paginación de los resultados
         int startIndex = (currentPage - 1) * resultsPerPage;
-        int endIndex = Math.min(startIndex + resultsPerPage,results.size());
-        List<MetricDoc> currentPageResults = results.subList(startIndex,endIndex);
+        int endIndex = Math.min(startIndex + resultsPerPage,resultsWithFacets.getDocs().size());
+        List<MetricDoc> currentPageResults = resultsWithFacets.getDocs().subList(startIndex,endIndex);
 
-        JPanel resultsGridPanel = getResultsGridPanel(currentPageResults);
+        resultsGridPanel = getResultsGridPanel(currentPageResults);
 
         // se aniade este componente para los casos en los que sea mas grande el contenido que la ventana
         JScrollPane scrollPane = new JScrollPane(resultsGridPanel);
@@ -385,7 +387,8 @@ public class IndexSearchUserInterface {
         previousDocsButton.addActionListener(e->{
             currentPage--;
             if(isValidPage(currentPage)) // para no mostrar una ventana sin resultados
-                createResultsWindow();
+                // TODO: cambiar por updateResultsWindow y que pinte los resultados segun el current page
+                updateResultsWindow(getCurrentPageResults());
             else{
                 JOptionPane.showMessageDialog(resultsDialog, "No hay más resultados");
                 currentPage++;
@@ -398,7 +401,7 @@ public class IndexSearchUserInterface {
         nextDocsButton.addActionListener(e->{
             currentPage++;
             if(isValidPage(currentPage)) // para no mostrar una ventana sin resultados
-                createResultsWindow();
+                updateResultsWindow(getCurrentPageResults());
             else{
                 JOptionPane.showMessageDialog(resultsDialog, "No hay más resultados");
                 currentPage--;
@@ -418,6 +421,14 @@ public class IndexSearchUserInterface {
         resultsDialog.setVisible(true);
     }
 
+    private List<MetricDoc> getCurrentPageResults() {
+        int startIndex = (currentPage - 1) * resultsPerPage;
+        int endIndex = Math.min(startIndex + resultsPerPage, resultsWithFacets.getDocs().size());
+
+        return resultsWithFacets.getDocs().subList(startIndex, endIndex);
+    }
+
+
     private JPanel createFacetsPanel() { // panel para las facetas (en resultsWindow)
         JPanel facetsPanel = new JPanel(new BorderLayout());
 
@@ -425,25 +436,88 @@ public class IndexSearchUserInterface {
         titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
 
-        String[] elementos = {"Eleccion1","Eleccion2"};
-        JComboBox<String> faceta1 = new JComboBox<>(elementos);
-        JComboBox<String> faceta2 = new JComboBox<>(elementos);
-        JComboBox<String> faceta3 = new JComboBox<>(elementos);
+        // Map con las facetas y sus subfacetas.
+        Map<String, ArrayList<String>> facets = new HashMap<>();
+        String facetName, subFacetName = "";
+        ArrayList<String> facetsNames = new ArrayList<>();
+
+        // se genera dinamicamente el apartado de las facetas
+        for (FacetResult facetResult : resultsWithFacets.getDims()) {
+            facetName = facetResult.dim;
+            facetsNames.add(facetName);
+
+            // solo si la faceta es jerarquica
+            if(facetResult.labelValues != null && facetResult.labelValues.length > 0){
+                ArrayList<String> subFacets = new ArrayList<>();
+
+                for(LabelAndValue subFacet : facetResult.labelValues){
+                    subFacetName = subFacet.label;
+                    subFacets.add(subFacetName);
+                }
+
+                facets.put(facetName,subFacets);
+            } else {
+                facets.put(facetName,new ArrayList<>());
+            }
+        }
 
         JPanel innerPanel = new JPanel(new GridLayout(0, 1));
-        innerPanel.add(titleLabel); // titulo
-        // se añaden las facetas
-        innerPanel.add(new JLabel("Faceta 1"));
-        innerPanel.add(faceta1);
-        innerPanel.add(new JLabel());
-        innerPanel.add(new JLabel("Faceta 2"));
-        innerPanel.add(faceta2);
-        innerPanel.add(new JLabel());
-        innerPanel.add(new JLabel("Faceta 3"));
-        innerPanel.add(faceta3);
-        innerPanel.add(new JLabel());
+        innerPanel.add(titleLabel);
+
+        // para acceder a cada combo de la faceta
+        Map<String,JComboBox<String>> comboFacets = new HashMap<>();
+
+        for(String facet : facetsNames){
+            ArrayList<String> subFacets = facets.get(facet);
+            JComboBox<String> combo = null;
+            if(subFacets != null && !subFacets.isEmpty()){
+                String[] subFacetsArray = new String[subFacets.size() + 1];
+                subFacetsArray[0] = "Not selected";
+                for(int i = 0; i < subFacets.size(); i++)
+                    subFacetsArray[i+1] = subFacets.get(i);
+                combo = new JComboBox<>(subFacetsArray);
+            }
+
+            comboFacets.put(facet,combo);
+            innerPanel.add(new JLabel(facet));
+            innerPanel.add(combo);
+            innerPanel.add(new JLabel());
+        }
 
         JButton filterResultsButton = new JButton("Filter");
+
+        filterResultsButton.addActionListener(e->{
+            System.out.println("Filtrando facetas...");
+            boolean anyFilterSelected = false;
+
+            Map<String, String> selectedFilters = new HashMap<>();
+            for (Map.Entry<String, JComboBox<String>> entry : comboFacets.entrySet()) {
+                String facet = entry.getKey();
+                JComboBox<String> comboBox = entry.getValue();
+                String selectedValue = (String) comboBox.getSelectedItem();
+                if (!"Not selected".equals(selectedValue)) {
+                    anyFilterSelected = true;
+                    selectedFilters.put(facet, selectedValue);
+                }
+            }
+
+
+            // para sacar por pantalla lo seleccionado
+            System.out.println("Filtros seleccionados:");
+            for (Map.Entry<String, String> entry : selectedFilters.entrySet()) {
+                System.out.println("Faceta: " + entry.getKey() + ", Seleccionado: " + entry.getValue());
+            }
+
+            if(!anyFilterSelected){
+                // TODO: revisar por qué al cambiar de página aparecen los docs anteriores
+                updateResultsWindow(resultsWithFacets.getDocs());
+            } else {
+                updateResultsWindow(new ArrayList<>());
+            }
+            // TODO: actualizar ventana de resultados
+
+
+        });
         filterResultsButton.setBackground(new Color(51,239,100));
         filterResultsButton.setForeground(new Color(34,42,45));
 
@@ -453,10 +527,42 @@ public class IndexSearchUserInterface {
         return facetsPanel;
     }
 
+    private void updateResultsWindow(List<MetricDoc> newResults){
+        resultsGridPanel.removeAll();
+        if(!newResults.isEmpty() && newResults != null){
+            for(int i = 0; i < newResults.size(); i++){
+                MetricDoc doc = newResults.get(i);
+
+                String resultText = "Documento nº " + (i + 1 + ((currentPage - 1)* resultsPerPage)) + "\n" +
+                        "Título: " + doc.getTitle() +
+                        "\nNúmero de Episodio: " + doc.getEpisode_number() +
+                        "\nPersonaje: " + doc.getCharacter();
+
+                JTextArea resultTextArea = new JTextArea(resultText);
+                resultTextArea.setFont(new Font("Arial", Font.ITALIC, 12));
+                resultTextArea.setBorder(BorderFactory.createEtchedBorder() );
+                resultTextArea.setEditable(false);
+                resultTextArea.setLineWrap(true);
+                resultTextArea.setWrapStyleWord(true);
+
+                JButton detailsButton = new JButton("More details");
+                detailsButton.addActionListener(e -> showDetailsWindow(doc));
+
+                JPanel resultDetailsPanel = new JPanel(new BorderLayout());
+                resultDetailsPanel.add(resultTextArea, BorderLayout.CENTER);
+                resultDetailsPanel.add(detailsButton, BorderLayout.SOUTH);
+                resultsGridPanel.add(resultDetailsPanel);
+            }
+        }
+
+        resultsGridPanel.revalidate();
+        resultsGridPanel.repaint();
+    }
+
     // método para controlar que no hay mas resultados en la busqueda y saltar excepcion
     private boolean isValidPage(int page) {
         int startIndex = (page - 1) * resultsPerPage;
-        return startIndex < results.size() && startIndex >= 0;
+        return startIndex < resultsWithFacets.getDocs().size() && startIndex >= 0;
     }
 
     private JPanel getResultsGridPanel(List<MetricDoc> results) { // se encarga de la ventana donde se muestran los resultados
