@@ -1,6 +1,10 @@
 package indexsearcher;
 
 import org.apache.lucene.document.*;
+import org.apache.lucene.facet.*;
+import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
+import org.apache.lucene.facet.taxonomy.TaxonomyReader;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.queryparser.classic.ParseException;
@@ -10,10 +14,12 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Vector;
 
 public class IndexSearch {
@@ -21,6 +27,10 @@ public class IndexSearch {
     private final IndexReader reader;
     // TODO: añadir un TaxonomyReader para abrir el indice de facetas y poder trabajar con estas
     private final IndexSearcher searcher;
+
+    private final FacetsConfig facetsConfig = new FacetsConfig();
+    private FacetsCollector facetsCollector;
+    private final TaxonomyReader taxoReader;
 
     private static IndexSearch instance;
     private final Vector<QueryData> querieListEpisode = new Vector<>();
@@ -34,19 +44,24 @@ public class IndexSearch {
         Directory directory = FSDirectory.open(Paths.get(indexDir));
         reader = DirectoryReader.open(directory);
         searcher = new IndexSearcher(reader);
+        Directory facetsDirectory = FSDirectory.open(Paths.get(indexDir).resolveSibling("facets"));
+        taxoReader = new DirectoryTaxonomyReader(facetsDirectory);
+        initializeFacets();
         System.out.println("IndexSearcher created");
     }
 
+    private void initializeFacets(){
+        facetsConfig.setHierarchical("Character", true);
+        facetsConfig.setHierarchical("Location", true);
+        facetsConfig.setIndexFieldName("ImdbRating", "imdb_rating");
+        facetsCollector = new FacetsCollector();
+    }
     // singleton para acceder siempre a la misma instancia
     public static synchronized IndexSearch getInstance(String indexDir) throws IOException {
         if (instance == null) {
             instance = new IndexSearch(indexDir);
         }
         return instance;
-    }
-
-    public IndexSearcher getSearcher() {
-        return searcher;
     }
 
     public void addQuery(String queryString, SearchOption so, BooleanClause.Occur occur) throws IOException, ParseException, java.text.ParseException {
@@ -138,8 +153,9 @@ public class IndexSearch {
 
         if(queryEpisode == null && queryDialog == null) return null;
 
-        TopDocs topDocsEpisode = searcher.search(queryEpisode, maxResults);
-        TopDocs topDocsDialog = searcher.search(queryDialog, maxResults);
+        TopDocs topDocsEpisode = FacetsCollector.search(searcher,queryEpisode,maxResults,facetsCollector);
+        TopDocs topDocsDialog = FacetsCollector.search(searcher,queryDialog,maxResults,facetsCollector);
+        //TopDocs topDocFacets = FacetsCollector.search(searcher,queryEpisode,maxResults,facetsCollector);
 
         ArrayList<Document> topDocsEpisodearr = new ArrayList<>();
         ArrayList<Document> topDocsDialogarr = new ArrayList<>();
@@ -178,7 +194,20 @@ public class IndexSearch {
         this.queryEpisode = null;
         this.querieListEpisode.clear();
         this.querieListDialog.clear();
+        // FACETAS
+        // TODO: reestrucutar una vez hecho
 
+
+        Facets facetas = new FastTaxonomyFacetCounts(taxoReader, facetsConfig, facetsCollector);
+        List<FacetResult> dims = facetas.getAllDims(100);
+        System.out.println("Categorias totales: " + dims.size());
+        for(FacetResult fr : dims){
+            System.out.println("Categoria: " + fr.dim);
+            for(LabelAndValue lv : fr.labelValues){
+                System.out.println("    Etiqueta: " + lv.label + " valor: " + lv.value);
+            }
+        }
+//        FacetResult facetResult = facetas.getTopChildren(10,"Character");
         return generateMetricDocList(topDocs);
     }
 
@@ -243,4 +272,5 @@ public class IndexSearch {
     public void closeIndex() throws IOException {
         reader.close();
     }
+
 }
