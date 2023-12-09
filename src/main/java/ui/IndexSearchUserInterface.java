@@ -651,7 +651,7 @@ public class IndexSearchUserInterface {
                 "\nNº de Episodio: " + doc.getEpisode_number() +
                 "\nCharacter: " + doc.getCharacter() +
                 "\nDialog: " + doc.getSpoken_words_dialog() +
-                "\nSpoken_words: " + doc.getSpoken_words() +
+                //"\nSpoken_words: " + doc.getSpoken_words() +
                 "\nLocation: " + doc.getLocation() +
                 "\nRating IMDB: " + doc.getImdb_rating() +
                 "\nRelease date: " + doc.getRelease_date() +
@@ -665,6 +665,36 @@ public class IndexSearchUserInterface {
 
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(closeButton);
+
+        JButton showAllEpisodeText = new JButton("Show full episode text");
+
+        // boton para mostrar el episodio del texto completo
+        showAllEpisodeText.addActionListener(e -> {
+
+            String fullEpisodeText = doc.getSpoken_words();
+            JDialog fullTextDialog = new JDialog(detailsDialog, "Full Episode Text", true);
+            fullTextDialog.setSize(600, 400);
+            fullTextDialog.setLocationRelativeTo(detailsDialog);
+
+            JTextArea fullTextArea = new JTextArea(fullEpisodeText);
+            fullTextArea.setEditable(false);
+            fullTextArea.setLineWrap(true);
+            fullTextArea.setWrapStyleWord(true);
+
+            JScrollPane fullScrollPane = new JScrollPane(fullTextArea);
+            fullScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+
+            fullTextDialog.add(fullScrollPane);
+
+            JButton closeFullTextButton = new JButton("Close");
+            closeFullTextButton.addActionListener(closeEvent -> fullTextDialog.dispose());
+
+            fullTextDialog.add(closeFullTextButton, BorderLayout.SOUTH);
+
+            fullTextDialog.setVisible(true);
+        });
+
+        buttonPanel.add(showAllEpisodeText);
 
         detailsPanel.add(buttonPanel, BorderLayout.SOUTH);
 
