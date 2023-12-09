@@ -244,10 +244,23 @@ public class IndexSearch {
         }
         Query allq = queryBuilder.build();
 
-        TopDocs topDocs = searcher.search(allq, maxResults);
+        //TopDocs topDocs = searcher.search(allq, maxResults);
+        TopDocs topDocs = FacetsCollector.search(searcher,allq,maxResults,facetsCollector);
 
         return generateMetricDocList(topDocs);
 
+
+    }
+
+    public SearchResult globalSearchWithFacets(String globalQuery) throws IOException, ParseException, java.text.ParseException {
+        ArrayList<MetricDoc> docs = allFieldsSearch(globalQuery);
+
+        Facets facetas = new FastTaxonomyFacetCounts(taxoReader, facetsConfig, facetsCollector);
+        List<FacetResult> dims = facetas.getAllDims(100);
+
+        facetsCollector = new FacetsCollector();
+
+        return new SearchResult(docs,dims);
 
     }
 

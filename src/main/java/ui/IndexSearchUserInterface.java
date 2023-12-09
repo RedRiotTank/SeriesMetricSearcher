@@ -12,7 +12,6 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
@@ -21,6 +20,7 @@ public class IndexSearchUserInterface {
     // TODO: revisar variables y hacer locales las que hagan falta
     private JTextField globalSearchTextField; // campo para busqueda global
     private IndexSearch indexSearch;
+    private boolean isOriginalResultsAdded;
     private ArrayList<MetricDoc> results;
     private SearchResult resultsWithFacets;
     private JFrame fieldsSearchframe;
@@ -31,6 +31,14 @@ public class IndexSearchUserInterface {
 
     private int currentPage = 1;
     private final int resultsPerPage = 10;
+
+    // Botones y panel de botones (para poder añadirlos o quitarlos en facetas)
+    private JPanel buttonsPanel;
+    private JButton newSearchButton;
+    private JButton previousDocsButton;
+    private JButton nextDocsButton;
+
+    private boolean originalResultsAdded = false;
 
     private boolean globalSearch = false;
     private JDialog resultsDialog;
@@ -308,11 +316,12 @@ public class IndexSearchUserInterface {
     private void search(boolean global) throws IOException, ParseException, java.text.ParseException {
         if(global){
             String queryGlobal = globalSearchTextField.getText();
+            // TODO: revisar la busqeuda global con facetas
             try{
-                results = indexSearch.allFieldsSearch(queryGlobal);
+                resultsWithFacets = indexSearch.globalSearchWithFacets(queryGlobal);
             }catch (NumberFormatException e) {
                 System.err.println("Sintax error");
-                results = null;
+                resultsWithFacets = null;
             }
             //globalSearchFrame.dispose(); // cierra la ventana
         }else{
@@ -321,7 +330,7 @@ public class IndexSearchUserInterface {
 
             }catch (NumberFormatException e){
                 System.err.println("Sintax error");
-                results = null;
+                resultsWithFacets = null;
             }
 
         }
@@ -340,7 +349,7 @@ public class IndexSearchUserInterface {
             resultsDialog.setLocationRelativeTo(fieldsSearchframe);
         }
         // si no hay resultados se muestra mensaje de error o si es null error por sintaxis
-        if(resultsWithFacets.getDocs() == null){ // TODO: revisar, no funciona bien
+        if(resultsWithFacets.getDocs() == null){
             JOptionPane.showMessageDialog(resultsDialog, "Sintax error in query", "Sintax error", JOptionPane.ERROR_MESSAGE);
             return;
         } else if(resultsWithFacets.getDocs().isEmpty()){
@@ -371,11 +380,11 @@ public class IndexSearchUserInterface {
         resultsPanel.add(scrollPane, BorderLayout.CENTER);
 
         // panel para los botones de abajo
-        JPanel buttonsPanel = new JPanel();
+        buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
         // NEW QUERY BUTTON
-        JButton newSearchButton = new JButton("New query");
+        newSearchButton = new JButton("New query");
         newSearchButton.addActionListener(e -> {
             resultsDialog.dispose(); // se cierra
             showMainWindow(globalSearch); // se abre la principal
@@ -383,11 +392,10 @@ public class IndexSearchUserInterface {
 
         buttonsPanel.add(newSearchButton);
         // PREVIOUS DOCS BUTTON
-        JButton previousDocsButton = new JButton("Previous 10 docs");
+        previousDocsButton = new JButton("Previous 10 docs");
         previousDocsButton.addActionListener(e->{
             currentPage--;
             if(isValidPage(currentPage)) // para no mostrar una ventana sin resultados
-                // TODO: cambiar por updateResultsWindow y que pinte los resultados segun el current page
                 updateResultsWindow(getCurrentPageResults());
             else{
                 JOptionPane.showMessageDialog(resultsDialog, "No hay más resultados");
@@ -397,7 +405,7 @@ public class IndexSearchUserInterface {
         buttonsPanel.add(previousDocsButton);
 
         // NEXT DOCS BUTTON
-        JButton nextDocsButton = new JButton("Next 10 docs");
+        nextDocsButton = new JButton("Next 10 docs");
         nextDocsButton.addActionListener(e->{
             currentPage++;
             if(isValidPage(currentPage)) // para no mostrar una ventana sin resultados
@@ -428,6 +436,21 @@ public class IndexSearchUserInterface {
         return resultsWithFacets.getDocs().subList(startIndex, endIndex);
     }
 
+    // para quitar los botones cuando se muestren los resultados filtrados
+    private void removeButtonFromPanel(JButton buttonToRemove) {
+        SwingUtilities.invokeLater(() -> {
+            buttonsPanel.remove(buttonToRemove);
+            buttonsPanel.revalidate();
+            buttonsPanel.repaint();
+        });
+    }
+    private void addButtonToPanel(JButton button) {
+        SwingUtilities.invokeLater(() -> {
+                buttonsPanel.add(button);
+                buttonsPanel.revalidate();
+                buttonsPanel.repaint();
+        });
+    }
 
     private JPanel createFacetsPanel() { // panel para las facetas (en resultsWindow)
         JPanel facetsPanel = new JPanel(new BorderLayout());
@@ -486,6 +509,8 @@ public class IndexSearchUserInterface {
 
         JButton filterResultsButton = new JButton("Filter");
 
+
+        isOriginalResultsAdded = true;
         filterResultsButton.addActionListener(e->{
             System.out.println("Filtrando facetas...");
             boolean anyFilterSelected = false;
@@ -501,21 +526,34 @@ public class IndexSearchUserInterface {
                 }
             }
 
-
             // para sacar por pantalla lo seleccionado
             System.out.println("Filtros seleccionados:");
             for (Map.Entry<String, String> entry : selectedFilters.entrySet()) {
                 System.out.println("Faceta: " + entry.getKey() + ", Seleccionado: " + entry.getValue());
             }
 
-            if(!anyFilterSelected){
-                // TODO: revisar por qué al cambiar de página aparecen los docs anteriores
-                updateResultsWindow(resultsWithFacets.getDocs());
+            if(!anyFilterSelected){ // sino se selecciona ningun filtro
+                JOptionPane.showMessageDialog(resultsDialog, "Any filter selected", "Filter error", JOptionPane.WARNING_MESSAGE);
             } else {
+                JButton originalResults = new JButton("Repaint original results");
+                originalResults.addActionListener(e1->{
+                    System.out.println("Pintando resultados originales...");
+                    createResultsWindow();
+                });
+                // añadir y quitar botones (experiencia de usuario)
+                if(isOriginalResultsAdded){ // bool para controlar que el boton solo se añade una vez
+                    addButtonToPanel(originalResults);
+                    isOriginalResultsAdded = false;
+                }
+
+
+                removeButtonFromPanel(nextDocsButton);
+                removeButtonFromPanel(previousDocsButton);
+                // TODO: llamar al metodo que recoge los nuevos resultados
+
+                // TODO: pasarle a updateResultsWindow el array con los nuevos resultados
                 updateResultsWindow(new ArrayList<>());
             }
-            // TODO: actualizar ventana de resultados
-
 
         });
         filterResultsButton.setBackground(new Color(51,239,100));
@@ -527,6 +565,7 @@ public class IndexSearchUserInterface {
         return facetsPanel;
     }
 
+    // metodo para actualizar los resultados
     private void updateResultsWindow(List<MetricDoc> newResults){
         resultsGridPanel.removeAll();
         if(!newResults.isEmpty() && newResults != null){
