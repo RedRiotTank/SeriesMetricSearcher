@@ -21,7 +21,7 @@ public class IndexSearchUserInterface {
     private JTextField globalSearchTextField; // campo para busqueda global
     private IndexSearch indexSearch;
     private boolean isOriginalResultsAdded;
-    private ArrayList<MetricDoc> results;
+    private ArrayList<MetricDoc> result_filtered;
     private SearchResult resultsWithFacets;
     private JFrame fieldsSearchframe;
     private JFrame globalSearchFrame;
@@ -326,7 +326,7 @@ public class IndexSearchUserInterface {
             //globalSearchFrame.dispose(); // cierra la ventana
         }else{
             try{
-                resultsWithFacets = indexSearch.searchWithFacets();
+                resultsWithFacets = indexSearch.searchAndObtainFacets();
 
             }catch (NumberFormatException e){
                 System.err.println("Sintax error");
@@ -550,6 +550,14 @@ public class IndexSearchUserInterface {
                 removeButtonFromPanel(nextDocsButton);
                 removeButtonFromPanel(previousDocsButton);
                 // TODO: llamar al metodo que recoge los nuevos resultados
+                String[] example = {"Character:SimpsonsFamily", "Location:MainLocations"};
+                try {
+                    result_filtered = indexSearch.searchDrillDown(example);
+                } catch (IOException | java.text.ParseException ex) {
+                    throw new RuntimeException(ex);
+                } catch (ParseException ex) {
+                    throw new RuntimeException(ex);
+                }
 
                 // TODO: pasarle a updateResultsWindow el array con los nuevos resultados
                 updateResultsWindow(new ArrayList<>());

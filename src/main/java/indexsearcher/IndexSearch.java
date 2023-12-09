@@ -198,7 +198,7 @@ public class IndexSearch {
         return generateMetricDocList(topDocs);
     }
 
-    public SearchResult searchWithFacets() throws IOException, ParseException, java.text.ParseException {
+    public SearchResult searchAndObtainFacets() throws IOException, ParseException, java.text.ParseException {
         ArrayList<MetricDoc> docs = search();
 
         Facets facetas = new FastTaxonomyFacetCounts(taxoReader, facetsConfig, facetsCollector);
@@ -208,6 +208,18 @@ public class IndexSearch {
 
         return new SearchResult(docs,dims);
 
+    }
+
+    public ArrayList<MetricDoc> searchDrillDown(String[] facetInputs) throws IOException, ParseException, java.text.ParseException {
+        DrillDownQuery drillDownQuery = new DrillDownQuery(facetsConfig,queryDialog);
+
+        for(String input : facetInputs){
+            String[] inputSplit = input.split(":");
+            drillDownQuery.add(inputSplit[0],inputSplit[1]);
+        }
+
+
+        return generateMetricDocList(FacetsCollector.search(searcher,drillDownQuery,maxResults,facetsCollector));
     }
 
     public Document getEpisodeDoc(String episode_number) throws IOException, ParseException, java.text.ParseException {
