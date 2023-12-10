@@ -210,7 +210,7 @@ public class IndexSearch {
 
     }
 
-    public ArrayList<MetricDoc> searchDrillDown(String[] facetInputs) throws IOException, ParseException, java.text.ParseException {
+    public ArrayList<MetricDoc> searchDrillDown(String[] facetInputs, ArrayList<MetricDoc> doclist) throws IOException, ParseException, java.text.ParseException {
         DrillDownQuery drillDownQuery = new DrillDownQuery(facetsConfig,queryDialog);
 
         for(String input : facetInputs){
@@ -218,8 +218,20 @@ public class IndexSearch {
             drillDownQuery.add(inputSplit[0],inputSplit[1]);
         }
 
+        ArrayList<MetricDoc> drilldocs = generateMetricDocList(FacetsCollector.search(searcher,drillDownQuery,maxResults,facetsCollector));
 
-        return generateMetricDocList(FacetsCollector.search(searcher,drillDownQuery,maxResults,facetsCollector));
+        ArrayList<MetricDoc> result = new ArrayList<>();
+
+        for(MetricDoc doc : doclist){
+            for(MetricDoc drilldoc : drilldocs){
+                if(doc.getEpisode_number().equals(drilldoc.getEpisode_number())){
+                    result.add(doc);
+                }
+            }
+        }
+
+
+        return result;
     }
 
     public Document getEpisodeDoc(String episode_number) throws IOException, ParseException, java.text.ParseException {

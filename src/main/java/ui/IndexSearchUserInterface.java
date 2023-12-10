@@ -566,7 +566,8 @@ public class IndexSearchUserInterface {
 
                     try {
                         // obtenemos los resultados filtrados
-                        resultsFiltered = indexSearch.searchDrillDown(selected);
+
+                        resultsFiltered = indexSearch.searchDrillDown(selected, this.resultsWithFacets.getDocs());
                         originalResults = false;
                     } catch (IOException | java.text.ParseException | ParseException ex) {
                         throw new RuntimeException(ex);
