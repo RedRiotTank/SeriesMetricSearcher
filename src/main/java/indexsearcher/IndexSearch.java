@@ -201,15 +201,13 @@ public class IndexSearch {
     }
 
     public SearchResult searchAndObtainFacets() throws IOException, ParseException, java.text.ParseException {
+        facetsCollector = new FacetsCollector();
         ArrayList<MetricDoc> docs = search();
 
         Facets facetas = new FastTaxonomyFacetCounts(taxoReader, facetsConfig, facetsCollector);
         List<FacetResult> dims = facetas.getAllDims(100);
 
-        facetsCollector = new FacetsCollector();
-
         return new SearchResult(docs,dims);
-
     }
 
     public ArrayList<MetricDoc> searchDrillDown(String[] facetInputs, ArrayList<MetricDoc> doclist) throws IOException, ParseException, java.text.ParseException {
