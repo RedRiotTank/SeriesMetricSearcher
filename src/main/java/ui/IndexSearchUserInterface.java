@@ -340,6 +340,7 @@ public class IndexSearchUserInterface {
     }
 
     private void createResultsWindow() {
+        currentPage = 1;
         // se cambia el frame por un dialog para poder actualizarlo en tiempo real
         if(resultsDialog == null){
             resultsDialog = new JDialog(fieldsSearchframe,"Query Results", true);
@@ -603,12 +604,17 @@ public class IndexSearchUserInterface {
 
     // metodo para actualizar los resultados
     private void updateResultsWindow(List<MetricDoc> newResults){
+
+        if(newResults.size() > 10)
+            currentPage = 1;
         resultsGridPanel.removeAll();
         if(!newResults.isEmpty() && newResults != null){
+            int startIndex = (currentPage - 1) * resultsPerPage;
             for(int i = 0; i < newResults.size(); i++){
                 MetricDoc doc = newResults.get(i);
-
-                String resultText = "Documento nº " + (i + 1 + ((currentPage - 1)* resultsPerPage)) + "\n" +
+                int documentNumber = startIndex + i  + 1;
+                String resultText =
+                        "Documento nº " + documentNumber+ "\n" +
                         "Título: " + doc.getTitle() +
                         "\nNúmero de Episodio: " + doc.getEpisode_number() +
                         "\nPersonaje: " + doc.getCharacter();
@@ -648,7 +654,8 @@ public class IndexSearchUserInterface {
             MetricDoc doc = results.get(i);
 
             // con las variables current page y results per page controlamos el numero de los docs en paginacion
-            String resultText = "Documento nº " + (i + 1 + ((currentPage - 1)* resultsPerPage)) + "\n" +
+            String resultText =
+                    "Documento nº " + (i + 1 + ((currentPage - 1)* resultsPerPage)) + "\n" +
                     "Título: " + doc.getTitle() +
                     "\nNúmero de Episodio: " + doc.getEpisode_number() +
                     "\nPersonaje: " + doc.getCharacter();
