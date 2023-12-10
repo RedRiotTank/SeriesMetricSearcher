@@ -37,7 +37,7 @@ public class IndexSearch {
     private Query queryEpisode = null;
     private Query queryDialog = null;
 
-    private int maxResults = 100;
+    private int maxResults = 300;
 
     public IndexSearch(String indexDir) throws IOException {
         Directory directory = FSDirectory.open(Paths.get(indexDir));
