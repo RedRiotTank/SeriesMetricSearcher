@@ -37,6 +37,8 @@ public class IndexSearch {
     private Query queryEpisode = null;
     private Query queryDialog = null;
 
+    private Query allq = null;
+
     private int maxResults = 300;
 
     public IndexSearch(String indexDir) throws IOException {
@@ -211,7 +213,13 @@ public class IndexSearch {
     }
 
     public ArrayList<MetricDoc> searchDrillDown(String[] facetInputs, ArrayList<MetricDoc> doclist) throws IOException, ParseException, java.text.ParseException {
-        DrillDownQuery drillDownQuery = new DrillDownQuery(facetsConfig,queryDialog);
+
+        Query query;
+
+        if(queryDialog != null) query = queryDialog;
+        else query = allq;
+
+        DrillDownQuery drillDownQuery = new DrillDownQuery(facetsConfig,query);
 
         for(String input : facetInputs){
             String[] inputSplit = input.split(":");
@@ -225,7 +233,7 @@ public class IndexSearch {
         for(MetricDoc doc : doclist){
             for(MetricDoc drilldoc : drilldocs){
                 if(doc.getEpisode_number().equals(drilldoc.getEpisode_number())){
-                    result.add(doc);
+                    result.add(drilldoc);
                 }
             }
         }
@@ -266,7 +274,8 @@ public class IndexSearch {
             Query tquery = parser.parse(queryString);
             queryBuilder.add(tquery, BooleanClause.Occur.SHOULD);
         }
-        Query allq = queryBuilder.build();
+
+        allq = queryBuilder.build();
 
         //TopDocs topDocs = searcher.search(allq, maxResults);
         TopDocs topDocs = FacetsCollector.search(searcher,allq,maxResults,facetsCollector);
