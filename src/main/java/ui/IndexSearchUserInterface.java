@@ -21,7 +21,7 @@ public class IndexSearchUserInterface {
     private JTextField globalSearchTextField; // campo para busqueda global
     private IndexSearch indexSearch;
     private boolean isOriginalResultsAdded;
-    private ArrayList<MetricDoc> result_filtered;
+    private ArrayList<MetricDoc> resultsFiltered;
     private SearchResult resultsWithFacets;
     private JFrame fieldsSearchframe;
     private JFrame globalSearchFrame;
@@ -38,7 +38,7 @@ public class IndexSearchUserInterface {
     private JButton previousDocsButton;
     private JButton nextDocsButton;
 
-    private boolean originalResultsAdded = false;
+    private boolean originalResults = true; // TODO: revisar nombre de la variable
 
     private boolean globalSearch = false;
     private JDialog resultsDialog;
@@ -455,120 +455,147 @@ public class IndexSearchUserInterface {
     private JPanel createFacetsPanel() { // panel para las facetas (en resultsWindow)
         JPanel facetsPanel = new JPanel(new BorderLayout());
 
-        JLabel titleLabel = new JLabel("Facets");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        titleLabel.setHorizontalAlignment(JLabel.CENTER);
+        // si hay facetas para la busqueda:
+        if(!resultsWithFacets.getDims().isEmpty() && resultsWithFacets.getDims() != null){
+            JLabel titleLabel = new JLabel("Categories");
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            titleLabel.setHorizontalAlignment(JLabel.CENTER);
 
-        // Map con las facetas y sus subfacetas.
-        Map<String, ArrayList<String>> facets = new HashMap<>();
-        String facetName, subFacetName = "";
-        ArrayList<String> facetsNames = new ArrayList<>();
+            // map con las facetas y sus subfacetas.
+            Map<String, ArrayList<String>> facets = new HashMap<>();
+            String facetName, subFacetName;
+            ArrayList<String> facetsNames = new ArrayList<>();
 
-        // se genera dinamicamente el apartado de las facetas
-        for (FacetResult facetResult : resultsWithFacets.getDims()) {
-            facetName = facetResult.dim;
-            facetsNames.add(facetName);
+            // se genera dinamicamente el apartado de las facetas
+            for (FacetResult facetResult : resultsWithFacets.getDims()) {
+                facetName = facetResult.dim;
+                facetsNames.add(facetName);
 
-            // solo si la faceta es jerarquica
-            if(facetResult.labelValues != null && facetResult.labelValues.length > 0){
-                ArrayList<String> subFacets = new ArrayList<>();
+                // solo si la faceta es jerarquica
+                if(facetResult.labelValues != null && facetResult.labelValues.length > 0){
+                    ArrayList<String> subFacets = new ArrayList<>();
 
-                for(LabelAndValue subFacet : facetResult.labelValues){
-                    subFacetName = subFacet.label;
-                    subFacets.add(subFacetName);
+                    for(LabelAndValue subFacet : facetResult.labelValues){
+                        subFacetName = subFacet.label;
+                        subFacets.add(subFacetName);
+                    }
+
+                    facets.put(facetName,subFacets);
+                } else {
+                    facets.put(facetName,new ArrayList<>());
+                }
+            }
+
+            JPanel innerPanel = new JPanel(new GridLayout(0, 1));
+            innerPanel.add(titleLabel);
+
+            // para acceder a cada combo de la faceta
+            Map<String,JComboBox<String>> comboFacets = new HashMap<>();
+
+            for(String facet : facetsNames){
+                ArrayList<String> subFacets = facets.get(facet);
+                JComboBox<String> combo = null;
+                if(subFacets != null && !subFacets.isEmpty()){
+                    String[] subFacetsArray = new String[subFacets.size() + 1];
+                    subFacetsArray[0] = "Not selected";
+                    for(int i = 0; i < subFacets.size(); i++)
+                        subFacetsArray[i+1] = subFacets.get(i);
+                    combo = new JComboBox<>(subFacetsArray);
                 }
 
-                facets.put(facetName,subFacets);
-            } else {
-                facets.put(facetName,new ArrayList<>());
+                comboFacets.put(facet,combo);
+                innerPanel.add(new JLabel(facet));
+                innerPanel.add(combo);
+                innerPanel.add(new JLabel());
             }
+
+
+            JButton filterResultsButton = new JButton("Filter");
+
+            isOriginalResultsAdded = true;
+            filterResultsButton.addActionListener(e->{
+
+                System.out.println("Filtrando facetas...");
+                boolean anyFilterSelected = false;
+
+                // guardamos los valores de cada combo
+                Map<String, String> selectedFilters = new HashMap<>();
+                for (Map.Entry<String, JComboBox<String>> entry : comboFacets.entrySet()) {
+                    String facet = entry.getKey();
+                    JComboBox<String> comboBox = entry.getValue();
+                    String selectedValue = (String) comboBox.getSelectedItem();
+                    if (!"Not selected".equals(selectedValue)) {
+                        anyFilterSelected = true;
+                        selectedFilters.put(facet, selectedValue);
+                    }
+                }
+
+                // para sacar por pantalla lo seleccionado y rellenar los filtros para la busqueda con facets
+                System.out.println("Filtros seleccionados:");
+                List<String> selectedList = new ArrayList<>(); // lista con los filtros
+                for (Map.Entry<String, String> entry : selectedFilters.entrySet()) {
+                    System.out.println("Faceta: " + entry.getKey() + ", Seleccionado: " + entry.getValue());
+                    selectedList.add(entry.getKey() + ":" + entry.getValue());
+                }
+
+                // se pasa a array de strings
+                // array que se usa para el filtrado
+                String[] selected = selectedList.toArray(new String[0]);
+
+                if(!anyFilterSelected){ // sino se selecciona ningun filtro
+                    if(originalResults) // para poder volver a los resultados originales con el boton Filter
+                        JOptionPane.showMessageDialog(resultsDialog, "Any filter selected", "Filter error", JOptionPane.WARNING_MESSAGE);
+                    else{ // si no hay filtros seleccionados y hay resultados filtrados: pinta originales
+                        createResultsWindow();
+                        originalResults = true;
+                    }
+
+                } else {
+                    JButton originalResultsButton = new JButton("Repaint original results");
+                    originalResultsButton.addActionListener(e1->{
+                        System.out.println("Pintando resultados originales...");
+                        createResultsWindow();
+                    });
+                    // añadir y quitar botones (experiencia de usuario)
+                    if(isOriginalResultsAdded){ // bool para controlar que el boton solo se añade una vez
+                        addButtonToPanel(originalResultsButton);
+                        isOriginalResultsAdded = false;
+                    }
+                    removeButtonFromPanel(nextDocsButton);
+                    removeButtonFromPanel(previousDocsButton);
+
+                    try {
+                        // obtenemos los resultados filtrados
+                        resultsFiltered = indexSearch.searchDrillDown(selected);
+                        originalResults = false;
+                    } catch (IOException | java.text.ParseException | ParseException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    // se pintan los resultados
+                    updateResultsWindow(resultsFiltered);
+                }
+
+            });
+
+            filterResultsButton.setBackground(new Color(51,239,100));
+            filterResultsButton.setForeground(new Color(34,42,45));
+
+            JButton clearButton = new JButton("Clear filters");
+            // boton para reestablecer los valores de los combos
+            clearButton.addActionListener(e->{
+                for (JComboBox<String> combo : comboFacets.values()) {
+                    if (combo != null) {
+                        combo.setSelectedIndex(0);
+                    }
+                }
+            });
+            clearButton.setBackground(new Color(200,60,60));
+            clearButton.setForeground(new Color(34,42,45));
+
+            innerPanel.add(clearButton);
+            innerPanel.add(filterResultsButton);
+            facetsPanel.add(innerPanel, BorderLayout.CENTER);
         }
-
-        JPanel innerPanel = new JPanel(new GridLayout(0, 1));
-        innerPanel.add(titleLabel);
-
-        // para acceder a cada combo de la faceta
-        Map<String,JComboBox<String>> comboFacets = new HashMap<>();
-
-        for(String facet : facetsNames){
-            ArrayList<String> subFacets = facets.get(facet);
-            JComboBox<String> combo = null;
-            if(subFacets != null && !subFacets.isEmpty()){
-                String[] subFacetsArray = new String[subFacets.size() + 1];
-                subFacetsArray[0] = "Not selected";
-                for(int i = 0; i < subFacets.size(); i++)
-                    subFacetsArray[i+1] = subFacets.get(i);
-                combo = new JComboBox<>(subFacetsArray);
-            }
-
-            comboFacets.put(facet,combo);
-            innerPanel.add(new JLabel(facet));
-            innerPanel.add(combo);
-            innerPanel.add(new JLabel());
-        }
-
-        JButton filterResultsButton = new JButton("Filter");
-
-
-        isOriginalResultsAdded = true;
-        filterResultsButton.addActionListener(e->{
-            System.out.println("Filtrando facetas...");
-            boolean anyFilterSelected = false;
-
-            Map<String, String> selectedFilters = new HashMap<>();
-            for (Map.Entry<String, JComboBox<String>> entry : comboFacets.entrySet()) {
-                String facet = entry.getKey();
-                JComboBox<String> comboBox = entry.getValue();
-                String selectedValue = (String) comboBox.getSelectedItem();
-                if (!"Not selected".equals(selectedValue)) {
-                    anyFilterSelected = true;
-                    selectedFilters.put(facet, selectedValue);
-                }
-            }
-
-            // para sacar por pantalla lo seleccionado
-            System.out.println("Filtros seleccionados:");
-            for (Map.Entry<String, String> entry : selectedFilters.entrySet()) {
-                System.out.println("Faceta: " + entry.getKey() + ", Seleccionado: " + entry.getValue());
-            }
-
-            if(!anyFilterSelected){ // sino se selecciona ningun filtro
-                JOptionPane.showMessageDialog(resultsDialog, "Any filter selected", "Filter error", JOptionPane.WARNING_MESSAGE);
-            } else {
-                JButton originalResults = new JButton("Repaint original results");
-                originalResults.addActionListener(e1->{
-                    System.out.println("Pintando resultados originales...");
-                    createResultsWindow();
-                });
-                // añadir y quitar botones (experiencia de usuario)
-                if(isOriginalResultsAdded){ // bool para controlar que el boton solo se añade una vez
-                    addButtonToPanel(originalResults);
-                    isOriginalResultsAdded = false;
-                }
-
-
-                removeButtonFromPanel(nextDocsButton);
-                removeButtonFromPanel(previousDocsButton);
-                // TODO: llamar al metodo que recoge los nuevos resultados
-                String[] example = {"Character:SimpsonsFamily", "Location:MainLocations"};
-                try {
-                    result_filtered = indexSearch.searchDrillDown(example);
-                } catch (IOException | java.text.ParseException ex) {
-                    throw new RuntimeException(ex);
-                } catch (ParseException ex) {
-                    throw new RuntimeException(ex);
-                }
-
-                // TODO: pasarle a updateResultsWindow el array con los nuevos resultados
-                updateResultsWindow(new ArrayList<>());
-            }
-
-        });
-        filterResultsButton.setBackground(new Color(51,239,100));
-        filterResultsButton.setForeground(new Color(34,42,45));
-
-        innerPanel.add(filterResultsButton);
-        facetsPanel.add(innerPanel, BorderLayout.CENTER);
 
         return facetsPanel;
     }
