@@ -219,10 +219,16 @@ public class IndexSearch {
 
         DrillDownQuery drillDownQuery = new DrillDownQuery(facetsConfig,query);
 
-        for(String input : facetInputs){
+        for (int i = 1; i < facetInputs.length; i++) {
+            String input = facetInputs[i];
             String[] inputSplit = input.split(":");
-            drillDownQuery.add(inputSplit[0],inputSplit[1]);
+            drillDownQuery.add(inputSplit[0], inputSplit[1]);
         }
+
+        String[] numberStrings = facetInputs[0].replaceAll("[^0-9.]+", " ").trim().split(" ");
+
+        double minRating = Double.parseDouble(numberStrings[0]);
+        double maxRating = Double.parseDouble(numberStrings[1]);
 
         ArrayList<MetricDoc> drilldocs = generateMetricDocList(FacetsCollector.search(searcher,drillDownQuery,maxResults,facetsCollector));
 
@@ -230,7 +236,7 @@ public class IndexSearch {
 
         for(MetricDoc doc : doclist){
             for(MetricDoc drilldoc : drilldocs){
-                if(doc.getEpisode_number().equals(drilldoc.getEpisode_number())){
+                if(doc.getEpisode_number().equals(drilldoc.getEpisode_number()) && Double.parseDouble(drilldoc.getImdb_rating()) >= minRating && Double.parseDouble(drilldoc.getImdb_rating()) <= maxRating){
                     result.add(drilldoc);
                 }
             }

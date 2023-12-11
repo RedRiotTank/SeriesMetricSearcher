@@ -6,8 +6,11 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.store.FSDirectory;
+import org.jdesktop.swingx.JXMultiThumbSlider;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -456,11 +459,50 @@ public class IndexSearchUserInterface {
     private JPanel createFacetsPanel() { // panel para las facetas (en resultsWindow)
         JPanel facetsPanel = new JPanel(new BorderLayout());
 
+        JLabel titleLabel = new JLabel("Categories");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(JLabel.CENTER);
+
+
+        JPanel innerPanel = new JPanel(new GridLayout(0, 1));
+        innerPanel.add(titleLabel);
+
+        JLabel rating = new JLabel("Rating");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(JLabel.LEFT);
+        innerPanel.add(rating);
+
+        RangeSlider rangeSlider = new RangeSlider();
+        rangeSlider.setPreferredSize(new Dimension(240, rangeSlider.getPreferredSize().height));
+        rangeSlider.setMinimum(0);
+        rangeSlider.setMaximum(10);
+
+        rangeSlider.setValue(0);
+        rangeSlider.setUpperValue(10);
+
+        JLabel minrat = new JLabel("Min Rating: " + rangeSlider.getValue());
+        minrat.setFont(new Font("Arial", Font.BOLD, 11));
+        minrat.setHorizontalAlignment(JLabel.LEFT);
+        innerPanel.add(minrat);
+
+        JLabel maxrat = new JLabel("Max Rating: " + rangeSlider.getUpperValue());
+        maxrat.setFont(new Font("Arial", Font.BOLD, 11));
+        maxrat.setHorizontalAlignment(JLabel.LEFT);
+        innerPanel.add(maxrat);
+
+        rangeSlider.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                minrat.setText("Low Rating: " + rangeSlider.getValue());
+                maxrat.setText("High Rating: " + rangeSlider.getUpperValue());
+            }
+        });
+
+        innerPanel.add(rangeSlider);
+
         // si hay facetas para la busqueda:
         if(!resultsWithFacets.getDims().isEmpty() && resultsWithFacets.getDims() != null){
-            JLabel titleLabel = new JLabel("Categories");
-            titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
-            titleLabel.setHorizontalAlignment(JLabel.CENTER);
+
 
             // map con las facetas y sus subfacetas.
             Map<String, ArrayList<String>> facets = new HashMap<>();
@@ -486,9 +528,6 @@ public class IndexSearchUserInterface {
                     facets.put(facetName,new ArrayList<>());
                 }
             }
-
-            JPanel innerPanel = new JPanel(new GridLayout(0, 1));
-            innerPanel.add(titleLabel);
 
             // para acceder a cada combo de la faceta
             Map<String,JComboBox<String>> comboFacets = new HashMap<>();
@@ -534,6 +573,7 @@ public class IndexSearchUserInterface {
                 // para sacar por pantalla lo seleccionado y rellenar los filtros para la busqueda con facets
                 System.out.println("Filtros seleccionados:");
                 List<String> selectedList = new ArrayList<>(); // lista con los filtros
+                selectedList.add("rating:[" + rangeSlider.getValue() + ":" + rangeSlider.getUpperValue() + "]");
                 for (Map.Entry<String, String> entry : selectedFilters.entrySet()) {
                     System.out.println("Faceta: " + entry.getKey() + ", Seleccionado: " + entry.getValue());
                     selectedList.add(entry.getKey() + ":" + entry.getValue());
