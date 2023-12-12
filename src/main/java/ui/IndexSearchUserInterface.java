@@ -6,7 +6,6 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.store.FSDirectory;
-import org.jdesktop.swingx.JXMultiThumbSlider;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
@@ -556,7 +555,6 @@ public class IndexSearchUserInterface {
             filterResultsButton.addActionListener(e->{
 
                 System.out.println("Filtrando facetas...");
-                boolean anyFilterSelected = false;
 
                 // guardamos los valores de cada combo
                 Map<String, String> selectedFilters = new HashMap<>();
@@ -565,7 +563,6 @@ public class IndexSearchUserInterface {
                     JComboBox<String> comboBox = entry.getValue();
                     String selectedValue = (String) comboBox.getSelectedItem();
                     if (!"Not selected".equals(selectedValue)) {
-                        anyFilterSelected = true;
                         selectedFilters.put(facet, selectedValue);
                     }
                 }
@@ -582,40 +579,29 @@ public class IndexSearchUserInterface {
                 // se pasa a array de strings
                 // array que se usa para el filtrado
                 String[] selected = selectedList.toArray(new String[0]);
-
-                if(!anyFilterSelected){ // sino se selecciona ningun filtro
-                    if(originalResults) // para poder volver a los resultados originales con el boton Filter
-                        JOptionPane.showMessageDialog(resultsDialog, "Any filter selected", "Filter error", JOptionPane.WARNING_MESSAGE);
-                    else{ // si no hay filtros seleccionados y hay resultados filtrados: pinta originales
-                        createResultsWindow();
-                        originalResults = true;
-                    }
-
-                } else {
-                    JButton originalResultsButton = new JButton("Repaint original results");
-                    originalResultsButton.addActionListener(e1->{
-                        System.out.println("Pintando resultados originales...");
-                        createResultsWindow();
-                    });
-                    // añadir y quitar botones (experiencia de usuario)
-                    if(isOriginalResultsAdded){ // bool para controlar que el boton solo se añade una vez
-                        addButtonToPanel(originalResultsButton);
-                        isOriginalResultsAdded = false;
-                    }
-                    removeButtonFromPanel(nextDocsButton);
-                    removeButtonFromPanel(previousDocsButton);
-
-                    try {
-                        // obtenemos los resultados filtrados
-
-                        resultsFiltered = indexSearch.searchDrillDown(selected, this.resultsWithFacets.getDocs());
-                        originalResults = false;
-                    } catch (IOException | java.text.ParseException | ParseException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                    // se pintan los resultados
-                    updateResultsWindow(resultsFiltered);
+                JButton originalResultsButton = new JButton("Repaint original results");
+                originalResultsButton.addActionListener(e1->{
+                    System.out.println("Pintando resultados originales...");
+                    createResultsWindow();
+                });
+                // añadir y quitar botones (experiencia de usuario)
+                if(isOriginalResultsAdded){ // bool para controlar que el boton solo se añade una vez
+                    addButtonToPanel(originalResultsButton);
+                    isOriginalResultsAdded = false;
                 }
+                removeButtonFromPanel(nextDocsButton);
+                removeButtonFromPanel(previousDocsButton);
+
+                try {
+                    // obtenemos los resultados filtrados
+
+                    resultsFiltered = indexSearch.searchDrillDown(selected, this.resultsWithFacets.getDocs());
+                    originalResults = false;
+                } catch (IOException | java.text.ParseException | ParseException ex) {
+                    throw new RuntimeException(ex);
+                }
+                // se pintan los resultados
+                updateResultsWindow(resultsFiltered);
 
             });
 
@@ -625,6 +611,8 @@ public class IndexSearchUserInterface {
             JButton clearButton = new JButton("Clear filters");
             // boton para reestablecer los valores de los combos
             clearButton.addActionListener(e->{
+                rangeSlider.setValue(0);
+                rangeSlider.setUpperValue(10);
                 for (JComboBox<String> combo : comboFacets.values()) {
                     if (combo != null) {
                         combo.setSelectedIndex(0);
@@ -674,7 +662,7 @@ public class IndexSearchUserInterface {
                 resultDetailsPanel.add(detailsButton, BorderLayout.SOUTH);
                 resultsGridPanel.add(resultDetailsPanel);
             }
-        }
+        } else JOptionPane.showMessageDialog(globalSearchFrame, "There are not results with these filters", "No results error", JOptionPane.ERROR_MESSAGE);
 
         resultsGridPanel.revalidate();
         resultsGridPanel.repaint();
