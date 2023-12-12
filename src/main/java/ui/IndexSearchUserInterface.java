@@ -459,7 +459,7 @@ public class IndexSearchUserInterface {
         JPanel facetsPanel = new JPanel(new BorderLayout());
 
         JLabel titleLabel = new JLabel("Categories");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 19));
         titleLabel.setHorizontalAlignment(JLabel.CENTER);
 
 
@@ -795,30 +795,30 @@ public class IndexSearchUserInterface {
 
     private static SearchOption getSearchOptionByField(String field) {
         return switch (field) {
-            case "spoken_words_dialog" -> SearchOption.SPOKEN_WORDS_DIALOG;
-            case "spoken_words" -> SearchOption.SPOKEN_WORDS;
-            case "character" -> SearchOption.CHARACTER;
-            case "location" -> SearchOption.LOCATION;
-            case "title" -> SearchOption.TITLE;
-            case "episode_number" -> SearchOption.EPISODE_NUMBER;
-            case "release_date" -> SearchOption.RELEASE_DATE;
-            case "imdb_rating" -> SearchOption.IMDB_RATING;
-            case "season" -> SearchOption.SEASON;
+            case "Dialog" -> SearchOption.SPOKEN_WORDS_DIALOG;
+            case "Episode text" -> SearchOption.SPOKEN_WORDS;
+            case "Character" -> SearchOption.CHARACTER;
+            case "Location" -> SearchOption.LOCATION;
+            case "Title" -> SearchOption.TITLE;
+            case "Episode number" -> SearchOption.EPISODE_NUMBER;
+            case "Release date" -> SearchOption.RELEASE_DATE;
+            case "Imdb rating" -> SearchOption.IMDB_RATING;
+            case "Season" -> SearchOption.SEASON;
             default -> throw new IllegalArgumentException("Campo no reconocido: " + field);
         };
     }
 
     private static Vector<Field> generateFieldsInfo(){
         Vector<Field> fields = new Vector<>();
-        fields.add(new Field("spoken_words_dialog", false));
-        fields.add(new Field( "character",false));
-        fields.add(new Field( "location", false));
-        fields.add(new Field("spoken_words", false));
-        fields.add(new Field( "title",false));
-        fields.add(new Field( "episode_number", true));
-        fields.add(new Field( "release_date", true));
-        fields.add(new Field("imdb_rating", true));
-        fields.add(new Field( "season", true));
+        fields.add(new Field("Dialog", false));
+        fields.add(new Field( "Character",false));
+        fields.add(new Field( "Location", false));
+        fields.add(new Field("Episode text", false));
+        fields.add(new Field( "Title",false));
+        fields.add(new Field( "Episode number", true));
+        fields.add(new Field( "Release date", true));
+        fields.add(new Field("Imdb rating", true));
+        fields.add(new Field( "Season", true));
         return fields;
     }
 
