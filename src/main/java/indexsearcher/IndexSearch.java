@@ -236,7 +236,13 @@ public class IndexSearch {
 
         for(MetricDoc doc : doclist){
             for(MetricDoc drilldoc : drilldocs){
-                if(doc.getEpisode_number().equals(drilldoc.getEpisode_number()) && Double.parseDouble(drilldoc.getImdb_rating()) >= minRating && Double.parseDouble(drilldoc.getImdb_rating()) <= maxRating){
+                if(drilldoc.getSpoken_words_dialog().contains("Nevada"))
+                    System.out.println("A");
+                if(doc.getEpisode_number().equals(drilldoc.getEpisode_number())
+                        && Double.parseDouble(drilldoc.getImdb_rating()) >= minRating
+                        && Double.parseDouble(drilldoc.getImdb_rating()) <= maxRating
+                        && !doc.getSpoken_words_dialog().equals("-")
+                        && doc.getSpoken_words_dialog().equals(drilldoc.getSpoken_words_dialog())){
                     result.add(drilldoc);
                 }
             }
@@ -318,6 +324,14 @@ public class IndexSearch {
         return metricDocList;
     }
 
+    private ArrayList<MetricDoc> generatGlobaleMetricDocList( ArrayList<Document> topDocs) throws IOException, ParseException, java.text.ParseException {
+        ArrayList<MetricDoc> metricDocList = new ArrayList<>();
+
+        for (Document doc : topDocs)
+            metricDocList.add(new MetricDoc(doc));
+
+        return metricDocList;
+    }
     public void closeIndex() throws IOException {
         reader.close();
     }
